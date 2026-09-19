@@ -1,6 +1,8 @@
 package com.juhao.classtool.ui.schedule
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +15,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -243,10 +249,22 @@ fun EditScheduleScreen(
                         val highlighted = weekday == today &&
                                 start != null && end != null &&
                                 nowMinutes in start until end
+
+                        val progress = if (highlighted && end > start) {
+                            ((nowMinutes - start).toFloat() / (end - start).toFloat())
+                                .coerceIn(0f, 1f)
+                        } else {
+                            0f
+                        }
+
                         ScheduleEventCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec),
                             transformation = SurfaceTransformation(transformationSpec),
                             event = event,
                             highlighted = highlighted,
+                            progress = progress,
                             onClick = {
                                 editingEvent = event
                                 showDialog = true
@@ -266,6 +284,7 @@ private fun ScheduleEventCard(
     transformation: SurfaceTransformation? = null,
     event: ScheduleEvent,
     highlighted: Boolean,
+    progress: Float,
     onClick: () -> Unit,
     onRequestDelete: () -> Unit
 ) {
@@ -274,13 +293,29 @@ private fun ScheduleEventCard(
 
     val revealState = rememberRevealState()
 
+    val animatedProgress by animateFloatAsState(
+        targetValue = if (highlighted) progress.coerceIn(0f, 1f) else 0f,
+        animationSpec = tween(500),
+        label = "progress"
+    )
+
+    val baseColor = if (highlighted) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val progressColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+    val contentColor = if (highlighted) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
     SwipeToReveal(
         primaryAction = {
             PrimaryActionButton(
                 onClick = {
-                    scope.launch {
-                        revealState.animateTo(RevealValue.Covered)
-                    }
+                    scope.launch { revealState.animateTo(RevealValue.Covered) }
                     onRequestDelete()
                 },
                 icon = { Icon(painterResource(R.drawable.delete), contentDescription = null) },
@@ -290,63 +325,67 @@ private fun ScheduleEventCard(
         },
         revealState = revealState,
         onSwipePrimaryAction = {
-            scope.launch {
-                revealState.animateTo(RevealValue.Covered)
-            }
+            scope.launch { revealState.animateTo(RevealValue.Covered) }
             onRequestDelete()
         },
         modifier = modifier
     ) {
-        Card(
+        FilledTonalButton(
             onClick = onClick,
             transformation = transformation,
-            colors = if (highlighted) {
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            } else {
-                CardDefaults.cardColors()
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (highlighted) {
-                        Modifier.border(
-                            width = 2.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                    } else {
-                        Modifier
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = Color.Transparent,
+                contentColor = contentColor
+            ),
+            label = {
+                Text(
+                    text = event.courseName ?: when (event.type) {
+                        ScheduleEventType.BREAK -> "课间休息"
+                        ScheduleEventType.ACTIVITY -> "活动"
+                        ScheduleEventType.CLASS -> "未命名"
                     }
                 )
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            },
+            secondaryLabel = {
+                Text(text = "${event.startTime} - ${event.endTime}")
+            },
+            icon = {
                 Box(
                     modifier = Modifier
                         .size(12.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(color)
                 )
-                Spacer(Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = event.courseName ?: when (event.type) {
-                            ScheduleEventType.BREAK -> "课间休息"
-                            ScheduleEventType.ACTIVITY -> "活动"
-                            ScheduleEventType.CLASS -> "未命名"
-                        }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    val radius = size.height / 2f
+                    drawRoundRect(
+                        color = baseColor,
+                        size = size,
+                        cornerRadius = CornerRadius(radius)
                     )
-                    Text(
-                        text = "${event.startTime} - ${event.endTime}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    if (animatedProgress > 0f) {
+                        drawRoundRect(
+                            color = progressColor,
+                            size = Size(size.width * animatedProgress, size.height),
+                            cornerRadius = CornerRadius(radius)
+                        )
+                    }
                 }
-            }
-        }
+                .then(
+                    if (highlighted) {
+                        Modifier.border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(50.dp)
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
+        )
     }
 }
 

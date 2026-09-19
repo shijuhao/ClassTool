@@ -60,9 +60,6 @@ fun WearApp() {
                         onChangePage = { backStack.add(it) }
                     )
                 }
-                entry<ViewScheduleNavScreen> {
-                    ViewScheduleScreen()
-                }
                 entry<EditScheduleNavScreen> {
                     EditScheduleScreen()
                 }
@@ -165,8 +162,6 @@ fun MainScreen(
         }
     }
 
-    var showChooseEditModeDialog by remember { mutableStateOf(false) }
-
     ScreenScaffold(
         scrollState = scrollState
     ) { contentPadding ->
@@ -197,6 +192,7 @@ fun MainScreen(
                         0f
                     }
                     ScheduleEventCard(
+                        modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
                         transformation = SurfaceTransformation(transformationSpec),
                         event = currentEvent,
                         highlighted = true,
@@ -206,51 +202,8 @@ fun MainScreen(
             }
 
             item {
-                AlertDialog(
-                    visible = showChooseEditModeDialog,
-                    onDismissRequest = {
-                        showChooseEditModeDialog = false
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.info),
-                            contentDescription = null
-                        )
-                    },
-                    title = { Text(text = "选择操作") },
-                    text = { Text(text = "想要做什么") },
-                    edgeButton = {
-                        AlertDialogDefaults.EdgeButton(
-                            onClick = {
-                                showChooseEditModeDialog = false
-                            },
-                            content = { Text("关闭") }
-                        )
-                    }
-                ) {
-                    item {
-                        FilledTonalButton(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                showChooseEditModeDialog = false
-                                onChangePage(ViewScheduleNavScreen)
-                            },
-                            label = { Text(modifier = Modifier.fillMaxWidth(), text = "查看课程表") },
-                        )
-                    }
-                    item {
-                        FilledTonalButton(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                showChooseEditModeDialog = false
-                                onChangePage(EditScheduleNavScreen)
-                            },
-                            label = { Text(modifier = Modifier.fillMaxWidth(), text = "设置课程表") },
-                        )
-                    }
-                }
                 FilledTonalButton(
-                    onClick = { showChooseEditModeDialog = true },
+                    onClick = { onChangePage(EditScheduleNavScreen) },
                     label = { Text("课程表") },
                     icon = {
                         Icon(

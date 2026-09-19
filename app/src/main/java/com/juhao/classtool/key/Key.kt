@@ -11,8 +11,6 @@ data object MenuScreen : AppKey
 
 @Serializable
 data object EditScheduleNavScreen : AppKey
-@Serializable
-data object ViewScheduleNavScreen : AppKey
 
 @Serializable
 data object ToolMenuNavScreen : AppKey
