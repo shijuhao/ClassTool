@@ -17,6 +17,7 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.foundation.pager.HorizontalPager
 import androidx.wear.compose.foundation.pager.PagerDefaults
 import androidx.wear.compose.foundation.pager.rememberPagerState
+import androidx.wear.compose.foundation.pager.GestureInclusion
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
@@ -104,7 +105,7 @@ fun GreetingScreen(
     HorizontalPagerScaffold(pagerState = pagerState) {
         HorizontalPager(
             state = pagerState,
-            gestureInclusion = PagerDefaults.disableLeftEdgeOnFirstPage(pagerState),
+            gestureInclusion = GestureInclusion { false },
             flingBehavior =
                 PagerDefaults.snapFlingBehavior(
                     state = pagerState,
@@ -112,7 +113,7 @@ fun GreetingScreen(
                     snapPositionalThreshold = PagerScaffoldDefaults.HighSnapPositionalThreshold,
                     snapAnimationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
                 ),
-            rotaryScrollableBehavior = null,
+            rotaryScrollableBehavior = null
         ) { page ->
             AnimatedPage(pageIndex = page, pagerState = pagerState) {
                 when (page) {
@@ -150,21 +151,19 @@ fun MainScreen(
     val scrollState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
 
-    LaunchedEffect(Unit) {
-        val scheduleStore = ScheduleDataStore(context)
-        val schedule by produceState(initialValue = emptyList()) {
-            value = scheduleStore.getSchedule().events
-        }
-        val nowMinutes = currentMinutes()
-        val today = todayWeekday()
-        val currentEvent = schedule.firstOrNull { event ->
-            event.weekday == today &&
-                toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-                toMinutes(event.endTime)?.let { nowMinutes < it } == true
-        }
-        if (currentEvent != null) {
-            onGoToFullScreen()
-        }
+    val scheduleStore = ScheduleDataStore(context)
+    val schedule by produceState(initialValue = emptyList()) {
+        value = scheduleStore.getSchedule().events
+    }
+    val nowMinutes = currentMinutes()
+    val today = todayWeekday()
+    val currentEvent = schedule.firstOrNull { event ->
+        event.weekday == today &&
+            toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+            toMinutes(event.endTime)?.let { nowMinutes < it } == true
+    }
+    if (currentEvent != null) {
+        onGoToFullScreen()
     }
 
     ScreenScaffold(
