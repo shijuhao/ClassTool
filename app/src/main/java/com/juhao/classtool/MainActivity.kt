@@ -30,8 +30,8 @@ import com.juhao.classtool.ui.settings.SettingsScreen
 
 import androidx.compose.ui.platform.LocalContext
 import com.juhao.classtool.datastore.ScheduleDataStore
-import com.juhao.classtool.datastore.SettingsDataStore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 import com.juhao.classtool.theme.WearAppTheme
 import com.juhao.classtool.ui.tool.timer.TimerScreen
@@ -61,9 +61,6 @@ fun WearApp() {
                     )
                 }
                 
-                entry<ScheduleFullNavScreen> {
-                    ScheduleFullScreen()
-                }
                 entry<EditScheduleNavScreen> {
                     EditScheduleScreen()
                 }
@@ -101,7 +98,8 @@ fun WearApp() {
 fun GreetingScreen(
     onChangePage: (AppKey) -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val scope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(pageCount = { 4 })
 
     HorizontalPagerScaffold(pagerState = pagerState) {
         HorizontalPager(
@@ -118,9 +116,19 @@ fun GreetingScreen(
             AnimatedPage(pageIndex = page, pagerState = pagerState) {
                 when (page) {
                     0 -> {
-                        MainScreen(onChangePage)
+                        MainScreen(
+                            onChangePage = onChangePage,
+                            onGoToFullScreen = {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(1)
+                                }
+                            }
+                        )
                     }
                     1 -> {
+                        ScheduleFullScreen()
+                    }
+                    2 -> {
                         SettingsScreen()
                     }
                     else -> {
@@ -134,35 +142,32 @@ fun GreetingScreen(
 
 @Composable
 fun MainScreen(
-    onChangePage: (AppKey) -> Unit
+    onChangePage: (AppKey) -> Unit,
+    onGoToFullScreen: () -> Unit
 ) {
     val context = LocalContext.current
     val scrollState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
 
-    val settingsStore = remember { SettingsDataStore(context) }
     val scheduleStore = remember { ScheduleDataStore(context) }
 
-    val showEventOnHome by settingsStore.showEventOnHomeFlow.collectAsState(initial = true)
     val schedule by produceState(initialValue = emptyList()) {
         value = scheduleStore.getSchedule().events
     }
 
     var nowMinutes by remember { mutableIntStateOf(currentMinutes()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            nowMinutes = currentMinutes()
-            delay(10_000L.milliseconds)
-        }
-    }
 
     val today = todayWeekday()
-    val currentEvent = remember(schedule, showEventOnHome, nowMinutes, today) {
-        if (!showEventOnHome) null
-        else schedule.firstOrNull { event ->
-            event.weekday == today &&
-                toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-                toMinutes(event.endTime)?.let { nowMinutes < it } == true
+    LaunchedEffect(Unit) {
+        val currentEvent = remember(schedule, nowMinutes, today) {
+            schedule.firstOrNull { event ->
+                event.weekday == today &&
+                    toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+                    toMinutes(event.endTime)?.let { nowMinutes < it } == true
+            }
+        }
+        if (currentEvent != null) {
+            onGoToFullScreen()
         }
     }
 
@@ -184,28 +189,6 @@ fun MainScreen(
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
                 ) { Text(text = "ClassTool") }
-            }
-
-            if (currentEvent != null) {
-                item {
-                    val start = toMinutes(currentEvent.startTime)
-                    val end = toMinutes(currentEvent.endTime)
-                    val progress = if (start != null && end != null && end > start) {
-                        (nowMinutes - start).toFloat() / (end - start).toFloat()
-                    } else {
-                        0f
-                    }
-                    ScheduleEventCard(
-                        modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                        transformation = SurfaceTransformation(transformationSpec),
-                        event = currentEvent,
-                        highlighted = true,
-                        progress = progress,
-                        onClick = {
-                            onChangePage(ScheduleFullNavScreen)
-                        }
-                    )
-                }
             }
 
             item {

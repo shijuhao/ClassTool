@@ -25,7 +25,6 @@ fun SettingsScreen() {
     val listState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
 
-    val showEventOnHome by store.showEventOnHomeFlow.collectAsState(initial = true)
     val classDuration by store.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by store.breakDurationFlow.collectAsState(initial = 10)
 
@@ -49,37 +48,6 @@ fun SettingsScreen() {
                 ) { Text(text = "设置") }
             }
 
-            item {
-                SwitchButton(
-                    checked = showEventOnHome,
-                    transformation = SurfaceTransformation(transformationSpec),
-                    onCheckedChange = { checked ->
-                        scope.launch {
-                            store.setShowEventOnHome(checked)
-                        }
-                    },
-                    label = {
-                        Text(
-                            text = "主页显示当前事件",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    secondaryLabel = {
-                        Text(
-                            text = "如果你设置了课程表，开启后就能在主页快捷查看当前事件",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.home),
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec)
-                )
-            }
-            
             item {
                 DurationSettingCard(
                     modifier = Modifier.transformedHeight(this, transformationSpec),

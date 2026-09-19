@@ -15,13 +15,8 @@ val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class SettingsDataStore(private val context: Context) {
 
-    private val showEventOnHomeKey = booleanPreferencesKey("show_event_on_home")
     private val classDurationKey = intPreferencesKey("class_duration_minutes")
     private val breakDurationKey = intPreferencesKey("break_duration_minutes")
-
-    val showEventOnHomeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
-        preferences[showEventOnHomeKey] ?: true
-    }
 
     val classDurationFlow: Flow<Int> = context.settingsDataStore.data.map { preferences ->
         preferences[classDurationKey] ?: 40
@@ -29,15 +24,6 @@ class SettingsDataStore(private val context: Context) {
 
     val breakDurationFlow: Flow<Int> = context.settingsDataStore.data.map { preferences ->
         preferences[breakDurationKey] ?: 10
-    }
-
-    suspend fun getShowEventOnHome(): Boolean =
-        context.settingsDataStore.data.map { it[showEventOnHomeKey] ?: true }.first()
-
-    suspend fun setShowEventOnHome(enabled: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[showEventOnHomeKey] = enabled
-        }
     }
 
     suspend fun getClassDuration(): Int =
