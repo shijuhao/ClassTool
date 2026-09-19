@@ -34,14 +34,13 @@ fun ScheduleFullScreen() {
         }
     }
 
+    val nowMinutes = nowSecondOfDay / 60
     val today = todayWeekday()
 
     val currentEvent = schedule.firstOrNull { event ->
-        val startSec = toMinutes(event.startTime)?.times(60)
-        val endSec = toMinutes(event.endTime)?.times(60)
         event.weekday == today &&
-            startSec != null && endSec != null &&
-            nowSecondOfDay in startSec until endSec
+            toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+            toMinutes(event.endTime)?.let { nowMinutes < it } == true
     }
 
     val targetProgress = if (currentEvent != null) {
@@ -64,9 +63,9 @@ fun ScheduleFullScreen() {
     )
 
     val remainingText = if (currentEvent != null) {
-        val endSec = toMinutes(currentEvent.endTime)?.times(60)
-        if (endSec != null) {
-            val remainingSec = endSec - nowSecondOfDay
+        val end = toMinutes(currentEvent.endTime)
+        if (end != null) {
+            val remainingSec = end * 60 - nowSecondOfDay
             if (remainingSec > 0) {
                 "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
             } else {
