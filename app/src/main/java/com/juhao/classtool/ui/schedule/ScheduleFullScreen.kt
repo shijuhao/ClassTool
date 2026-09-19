@@ -15,6 +15,7 @@ import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
 import kotlinx.coroutines.delay
+import java.time.LocalTime
 
 @Composable
 fun ScheduleFullScreen() {
@@ -22,18 +23,18 @@ fun ScheduleFullScreen() {
     val store = remember { ScheduleDataStore(context) }
 
     var schedule by remember { mutableStateOf(emptyList<ScheduleEvent>()) }
-    var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+    var nowSecondOfDay by remember { mutableIntStateOf(currentSecondOfDay()) }
 
     LaunchedEffect(Unit) {
         while (true) {
             schedule = store.getSchedule().events
-            nowMillis = System.currentTimeMillis()
+            nowSecondOfDay = currentSecondOfDay()
             delay(1000L)
         }
     }
 
+    val nowMinutes = nowSecondOfDay / 60
     val today = todayWeekday()
-    val nowMinutes = nowMillis / 60_000L
 
     val currentEvent = schedule.firstOrNull { event ->
         event.weekday == today &&
@@ -56,12 +57,9 @@ fun ScheduleFullScreen() {
     val remainingText = if (currentEvent != null) {
         val end = toMinutes(currentEvent.endTime)
         if (end != null) {
-            val remainingMs = end * 60_000L - nowMillis
-            if (remainingMs > 0) {
-                val totalSec = remainingMs / 1000
-                val m = totalSec / 60
-                val s = totalSec % 60
-                "剩余 %02d:%02d".format(m, s)
+            val remainingSec = end * 60 - nowSecondOfDay
+            if (remainingSec > 0) {
+                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
             } else {
                 "剩余 00:00"
             }
@@ -144,4 +142,9 @@ fun ScheduleFullScreen() {
             }
         }
     }
+}
+
+private fun currentSecondOfDay(): Int {
+    val now = LocalTime.now()
+    return now.hour * 3600 + now.minute * 60 + now.second
 }
