@@ -1,5 +1,7 @@
-package com.juhao.classtool.ui.coin
+package com.juhao.classtool.ui.about
 
+import android.content.Intent
+import androidx.core.net.toUri
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -45,46 +47,66 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             }
             item {
                 Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .minimumVerticalContentPadding(
-                            ListHeaderDefaults.minimumTopListContentPadding
-                        ),
+                    modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center,
                     text = "ClassTool"
                 )
             }
             item {
                 Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .minimumVerticalContentPadding(
-                            ListHeaderDefaults.minimumTopListContentPadding
-                        ),
-                    textAlign = TextAlign.Center,
-                    text = "版本号: ${context.getAppVersionInfo().versionName}"
-                )
-            }
-            item {
-                Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .minimumVerticalContentPadding(
-                            ListHeaderDefaults.minimumTopListContentPadding
-                        ),
+                    modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center,
                     text = "课间娱乐/小工具"
                 )
             }
             item {
-                Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .minimumVerticalContentPadding(
-                            ListHeaderDefaults.minimumTopListContentPadding
-                        ),
-                    textAlign = TextAlign.Center,
-                    text = "开发者: JuHao"
+                FilledTonalButton(
+                    onClick = { },
+                    label = { Text("版本号") },
+                    secondaryLabel = { Text(context.getAppVersionInfo().versionName) },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.info),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            item {
+                FilledTonalButton(
+                    onClick = { },
+                    label = { Text("开发者") },
+                    secondaryLabel = { Text("JuHao") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.person),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            item {
+                FilledTonalButton(
+                    onClick = { 
+                        context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/shijuhao/classtool".toUri()))
+                    },
+                    label = { Text("源代码") },
+                    secondaryLabel = { Text("https://github.com/shijuhao/classtool") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.code),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    transformation = SurfaceTransformation(transformationSpec)
                 )
             }
         }

@@ -61,38 +61,29 @@ dependencies {
 
     val composeBom = platform(libs.androidx.compose.bom)
 
-    // General compose dependencies
     implementation(composeBom)
     implementation(libs.androidx.activity.compose)
 
-    // Compose for Wear OS Dependencies
-    // NOTE: DO NOT INCLUDE a dependency on androidx.compose.material:material.
-    // androidx.wear.compose:compose-material is designed as a replacement not an addition to
-    // androidx.compose.material:material. If there are features from that you feel are missing from
-    // androidx.wear.compose:compose-material please raise a bug to let us know:
-    // https://issuetracker.google.com/issues/new?component=1077552&template=1598429&pli=1
     implementation(libs.wear.compose.material)
 
-    // Foundation is additive, so you can use the mobile version in your Wear OS app.
     implementation(libs.wear.compose.foundation)
     implementation(libs.androidx.material.icons.core)
 
-    // Preview Tooling
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.ui.tooling)
 
-    // If you are using Compose Navigation, use the Wear OS version (NOT the
-    // androidx.navigation:navigation-compose version), that is, uncomment the line below.
     implementation(libs.wear.compose.navigation3)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
+    
+    implementation(libs.datastore.preferences)
+    implementation(libs.datastore)
 
     implementation(libs.androidx.ui.test.manifest)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
-    // Testing
     testImplementation(libs.androidx.ui.test.junit4)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

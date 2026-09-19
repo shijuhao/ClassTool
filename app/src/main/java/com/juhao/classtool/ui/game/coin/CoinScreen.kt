@@ -1,4 +1,4 @@
-package com.juhao.classtool.ui.coin
+package com.juhao.classtool.ui.game.coin
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -13,7 +13,6 @@ import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
 import com.juhao.classtool.R
-import com.juhao.classtool.theme.AppCardDefaults
 import kotlin.random.Random
 
 @Composable
@@ -41,13 +40,13 @@ fun CoinScreen(modifier: Modifier = Modifier) {
                                 ListHeaderDefaults.minimumTopListContentPadding
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
-                ) { Text(text = "扔硬币") }
+                ) { Text(text = "抛硬币") }
             }
             item {
                 Button(
                     label = {
                         Text(
-                            text = "开扔！",
+                            text = "开抛！",
                             modifier = modifier.fillMaxWidth()
                         )
                     },
@@ -78,8 +77,8 @@ fun CoinScreen(modifier: Modifier = Modifier) {
         },
         title = { Text(text = "结果") },
         text = { Text(text = "硬币在 ${if (coinIsInPositive) "正面" else "背面"}") },
-        confirmButton = {
-            AlertDialogDefaults.ConfirmButton(
+        edgeButton = {
+            AlertDialogDefaults.EdgeButton(
                 onClick = {
                     showDialog = false
                 }
