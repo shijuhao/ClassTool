@@ -22,17 +22,19 @@ fun ScheduleFullScreen() {
     val store = remember { ScheduleDataStore(context) }
 
     var schedule by remember { mutableStateOf(emptyList<ScheduleEvent>()) }
-    var nowMinutes by remember { mutableStateOf(currentMinutes()) }
+    var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(Unit) {
         while (true) {
             schedule = store.getSchedule().events
-            nowMinutes = currentMinutes()
-            delay(10_000L)
+            nowMillis = System.currentTimeMillis()
+            delay(1000L)
         }
     }
 
     val today = todayWeekday()
+    val nowMinutes = nowMillis / 60_000L
+
     val currentEvent = schedule.firstOrNull { event ->
         event.weekday == today &&
             toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
@@ -49,6 +51,25 @@ fun ScheduleFullScreen() {
         }
     } else {
         0f
+    }
+
+    val remainingText = if (currentEvent != null) {
+        val end = toMinutes(currentEvent.endTime)
+        if (end != null) {
+            val remainingMs = end * 60_000L - nowMillis
+            if (remainingMs > 0) {
+                val totalSec = remainingMs / 1000
+                val m = totalSec / 60
+                val s = totalSec % 60
+                "剩余 %02d:%02d".format(m, s)
+            } else {
+                "剩余 00:00"
+            }
+        } else {
+            null
+        }
+    } else {
+        null
     }
 
     val eventColor = currentEvent?.courseColor?.let { parseColor(it) }
@@ -104,11 +125,20 @@ fun ScheduleFullScreen() {
                         style = MaterialTheme.typography.titleLarge,
                         textAlign = TextAlign.Center
                     )
+                    if (remainingText != null) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = remainingText,
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center,
+                            color = eventColor
+                        )
+                    }
                 }
             } else {
                 Text(
                     text = "当前没有事件",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

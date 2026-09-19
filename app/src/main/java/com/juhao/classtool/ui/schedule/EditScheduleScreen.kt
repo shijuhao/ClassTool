@@ -212,7 +212,7 @@ fun EditScheduleScreen(
                 .filter { it.weekday == weekday }
                 .sortedBy { it.startTime }
 
-            val dayEvents = if (editMode) rawDayEvents else rawDayEvents.mergeBreaks()
+            val dayEvents = if (editMode) rawDayEvents else rawDayEvents.hideBreaks()
 
             ScreenScaffold(
                 scrollState = listState
@@ -232,42 +232,7 @@ fun EditScheduleScreen(
                             transformation = SurfaceTransformation(transformationSpec)
                         ) { Text(text = weekdayLabel(weekday)) }
                     }
-
-                    items(
-                        count = dayEvents.size,
-                        key = { index -> dayEvents[index].id }
-                    ) { index ->
-                        val event = dayEvents[index]
-                        val start = toMinutes(event.startTime)
-                        val end = toMinutes(event.endTime)
-                        val highlighted = weekday == today &&
-                                start != null && end != null &&
-                                nowMinutes in start until end
-
-                        val progress = if (highlighted && end > start) {
-                            ((nowMinutes - start).toFloat() / (end - start).toFloat())
-                                .coerceIn(0f, 1f)
-                        } else {
-                            0f
-                        }
-
-                        ScheduleEventCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec),
-                            transformation = SurfaceTransformation(transformationSpec),
-                            event = event,
-                            highlighted = highlighted,
-                            progress = progress,
-                            swipeEnabled = editMode,
-                            onClick = {
-                                editingEvent = event
-                                showDialog = true
-                            },
-                            onRequestDelete = { pendingDelete = event }
-                        )
-                    }
-
+                    
                     item {
                         ButtonGroup(
                             modifier =
@@ -310,6 +275,43 @@ fun EditScheduleScreen(
                             )
                         }
                     }
+
+                    items(
+                        count = dayEvents.size,
+                        key = { index -> dayEvents[index].id }
+                    ) { index ->
+                        val event = dayEvents[index]
+                        val start = toMinutes(event.startTime)
+                        val end = toMinutes(event.endTime)
+                        val highlighted = weekday == today &&
+                                start != null && end != null &&
+                                nowMinutes in start until end
+
+                        val progress = if (highlighted && end > start) {
+                            ((nowMinutes - start).toFloat() / (end - start).toFloat())
+                                .coerceIn(0f, 1f)
+                        } else {
+                            0f
+                        }
+
+                        ScheduleEventCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec),
+                            transformation = SurfaceTransformation(transformationSpec),
+                            event = event,
+                            highlighted = highlighted,
+                            progress = progress,
+                            editMode = editMode,
+                            onClick = {
+                                if (editMode) {
+                                    editingEvent = event
+                                    showDialog = true
+                                }
+                            },
+                            onRequestDelete = { pendingDelete = event }
+                        )
+                    }
                 }
             }
         }
@@ -323,7 +325,7 @@ private fun ScheduleEventCard(
     event: ScheduleEvent,
     highlighted: Boolean,
     progress: Float,
-    swipeEnabled: Boolean,
+    editMode: Boolean,
     onClick: () -> Unit,
     onRequestDelete: () -> Unit
 ) {
@@ -407,7 +409,7 @@ private fun ScheduleEventCard(
         )
     }
 
-    if (swipeEnabled) {
+    if (editMode) {
         val revealState = rememberRevealState()
         SwipeToReveal(
             primaryAction = {
@@ -835,15 +837,11 @@ private fun WearTimePicker(
     )
 }
 
-private fun List<ScheduleEvent>.mergeBreaks(): List<ScheduleEvent> {
+private fun List<ScheduleEvent>.hideBreaks(): List<ScheduleEvent> {
     val result = mutableListOf<ScheduleEvent>()
     for (event in this) {
         if (event.type == ScheduleEventType.BREAK) {
-            val last = result.lastOrNull()
-            if (last != null) {
-                result[result.lastIndex] = last.copy(endTime = event.endTime)
-                continue
-            }
+            continue
         }
         result.add(event)
     }
