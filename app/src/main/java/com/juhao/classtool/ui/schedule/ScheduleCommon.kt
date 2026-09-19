@@ -1,5 +1,6 @@
 package com.juhao.classtool.ui.schedule
 
+import androidx.compose.ui.graphics.Color
 import com.juhao.classtool.datastore.Weekday
 import java.time.LocalDate
 import java.time.LocalTime

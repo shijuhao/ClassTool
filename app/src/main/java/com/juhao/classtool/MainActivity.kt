@@ -159,12 +159,10 @@ fun MainScreen(
 
     val today = todayWeekday()
     LaunchedEffect(Unit) {
-        val currentEvent = remember(schedule, nowMinutes, today) {
-            schedule.firstOrNull { event ->
-                event.weekday == today &&
-                    toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-                    toMinutes(event.endTime)?.let { nowMinutes < it } == true
-            }
+        val currentEvent = schedule.firstOrNull { event ->
+            event.weekday == today &&
+                toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+                toMinutes(event.endTime)?.let { nowMinutes < it } == true
         }
         if (currentEvent != null) {
             onGoToFullScreen()
