@@ -1,6 +1,6 @@
 package com.juhao.classtool.ui.schedule
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
@@ -56,11 +56,30 @@ fun ScheduleFullScreen() {
         0f
     }
 
-    val animatedProgress by animateFloatAsState(
-        targetValue = targetProgress,
-        animationSpec = tween(1000),
-        label = "progress"
-    )
+    val progressAnim = remember { Animatable(0f) }
+
+    LaunchedEffect(currentEvent?.id) {
+        val ev = currentEvent
+        if (ev == null) {
+            progressAnim.snapTo(0f)
+        } else {
+            val startSec = toMinutes(ev.startTime)?.times(60)
+            val endSec = toMinutes(ev.endTime)?.times(60)
+            val p = if (startSec != null && endSec != null && endSec > startSec) {
+                ((currentSecondOfDay() - startSec).toFloat() / (endSec - startSec).toFloat())
+                    .coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            progressAnim.snapTo(p)
+        }
+    }
+
+    LaunchedEffect(targetProgress) {
+        if (currentEvent != null) {
+            progressAnim.animateTo(targetProgress, tween(1000))
+        }
+    }
 
     val remainingText = if (currentEvent != null) {
         val end = toMinutes(currentEvent.endTime)
@@ -90,7 +109,7 @@ fun ScheduleFullScreen() {
         ) {
             if (currentEvent != null) {
                 CircularProgressIndicator(
-                    progress = { animatedProgress },
+                    progress = { progressAnim.value },
                     modifier = Modifier.fillMaxSize(),
                     strokeWidth = 10.dp,
                     startAngle = 120f,
