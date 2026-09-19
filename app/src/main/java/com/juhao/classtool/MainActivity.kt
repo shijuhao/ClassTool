@@ -111,7 +111,7 @@ fun GreetingScreen(
 
     val pagerState = rememberPagerState(
         initialPage = 0,
-        pageCount = { 3 }
+        pageCount = { 4 }
     )
 
     var initialJumpDone by remember { mutableStateOf(false) }

@@ -1,6 +1,7 @@
 package com.juhao.classtool.ui.schedule
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -33,20 +34,22 @@ fun ScheduleFullScreen() {
         }
     }
 
-    val nowMinutes = nowSecondOfDay / 60
     val today = todayWeekday()
 
     val currentEvent = schedule.firstOrNull { event ->
+        val startSec = toMinutes(event.startTime)?.times(60)
+        val endSec = toMinutes(event.endTime)?.times(60)
         event.weekday == today &&
-            toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-            toMinutes(event.endTime)?.let { nowMinutes < it } == true
+            startSec != null && endSec != null &&
+            nowSecondOfDay in startSec until endSec
     }
 
-    val progress = if (currentEvent != null) {
-        val start = toMinutes(currentEvent.startTime)
-        val end = toMinutes(currentEvent.endTime)
-        if (start != null && end != null && end > start) {
-            ((nowMinutes - start).toFloat() / (end - start).toFloat()).coerceIn(0f, 1f)
+    val targetProgress = if (currentEvent != null) {
+        val startSec = toMinutes(currentEvent.startTime)?.times(60)
+        val endSec = toMinutes(currentEvent.endTime)?.times(60)
+        if (startSec != null && endSec != null && endSec > startSec) {
+            ((nowSecondOfDay - startSec).toFloat() / (endSec - startSec).toFloat())
+                .coerceIn(0f, 1f)
         } else {
             0f
         }
@@ -54,10 +57,16 @@ fun ScheduleFullScreen() {
         0f
     }
 
+    val animatedProgress by animateFloatAsState(
+        targetValue = targetProgress,
+        animationSpec = tween(1000),
+        label = "progress"
+    )
+
     val remainingText = if (currentEvent != null) {
-        val end = toMinutes(currentEvent.endTime)
-        if (end != null) {
-            val remainingSec = end * 60 - nowSecondOfDay
+        val endSec = toMinutes(currentEvent.endTime)?.times(60)
+        if (endSec != null) {
+            val remainingSec = endSec - nowSecondOfDay
             if (remainingSec > 0) {
                 "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
             } else {
@@ -77,13 +86,12 @@ fun ScheduleFullScreen() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(eventColor.copy(alpha = 0.2f))
                 .padding(12.dp),
             contentAlignment = Alignment.Center
         ) {
             if (currentEvent != null) {
                 CircularProgressIndicator(
-                    progress = { progress },
+                    progress = { animatedProgress },
                     modifier = Modifier.fillMaxSize(),
                     strokeWidth = 10.dp,
                     startAngle = 120f,
