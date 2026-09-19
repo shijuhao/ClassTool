@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -102,10 +103,11 @@ fun EditScheduleScreen(
     )
 
     var showDialog by remember { mutableStateOf(false) }
+    var editMode by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
 
     var refreshKey by remember { mutableIntStateOf(0) }
-    val schedule by produceState(initialValue = emptyList(), refreshKey) {
+    val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
         value = store.getSchedule().events
     }
 
@@ -205,23 +207,15 @@ fun EditScheduleScreen(
             val weekday = weekdays[page]
             val listState = rememberTransformingLazyColumnState()
             val transformationSpec = rememberTransformationSpec()
-            val dayEvents = schedule
+
+            val rawDayEvents = schedule
                 .filter { it.weekday == weekday }
                 .sortedBy { it.startTime }
 
+            val dayEvents = if (editMode) rawDayEvents else rawDayEvents.mergeBreaks()
+
             ScreenScaffold(
-                scrollState = listState,
-                edgeButton = {
-                    EdgeButton(
-                        onClick = {
-                            editingEvent = null
-                            showDialog = true
-                        },
-                        buttonSize = EdgeButtonSize.ExtraSmall
-                    ) {
-                        Text("新增事件")
-                    }
-                }
+                scrollState = listState
             ) { contentPadding ->
                 TransformingLazyColumn(
                     state = listState,
@@ -265,12 +259,56 @@ fun EditScheduleScreen(
                             event = event,
                             highlighted = highlighted,
                             progress = progress,
+                            swipeEnabled = editMode,
                             onClick = {
                                 editingEvent = event
                                 showDialog = true
                             },
                             onRequestDelete = { pendingDelete = event }
                         )
+                    }
+
+                    item {
+                        ButtonGroup(
+                            modifier =
+                                Modifier
+                                    .graphicsLayer {
+                                        with(transformationSpec) {
+                                            applyContainerTransformation(scrollProgress)
+                                        }
+                                    }.transformedHeight(this, transformationSpec)
+                                    .minimumVerticalContentPadding(
+                                        ButtonDefaults.minimumVerticalListContentPadding
+                                    )
+                        ) {
+                            FilledTonalIconButton(
+                                onClick = { editMode = !editMode },
+                                modifier = Modifier.weight(1f),
+                                content = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (editMode) R.drawable.close else R.drawable.edit
+                                        ),
+                                        contentDescription = "编辑",
+                                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                                    )
+                                }
+                            )
+                            FilledIconButton(
+                                onClick = {
+                                    editingEvent = null
+                                    showDialog = true
+                                },
+                                content = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.add),
+                                        contentDescription = "新增事件",
+                                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
@@ -285,13 +323,12 @@ private fun ScheduleEventCard(
     event: ScheduleEvent,
     highlighted: Boolean,
     progress: Float,
+    swipeEnabled: Boolean,
     onClick: () -> Unit,
     onRequestDelete: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val color = event.courseColor?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
-
-    val revealState = rememberRevealState()
 
     val animatedProgress by animateFloatAsState(
         targetValue = if (highlighted) progress.coerceIn(0f, 1f) else 0f,
@@ -311,25 +348,7 @@ private fun ScheduleEventCard(
         MaterialTheme.colorScheme.onSurface
     }
 
-    SwipeToReveal(
-        primaryAction = {
-            PrimaryActionButton(
-                onClick = {
-                    scope.launch { revealState.animateTo(RevealValue.Covered) }
-                    onRequestDelete()
-                },
-                icon = { Icon(painterResource(R.drawable.delete), contentDescription = null) },
-                text = { Text("删除") },
-                modifier = Modifier.height(SwipeToRevealDefaults.LargeActionButtonHeight),
-            )
-        },
-        revealState = revealState,
-        onSwipePrimaryAction = {
-            scope.launch { revealState.animateTo(RevealValue.Covered) }
-            onRequestDelete()
-        },
-        modifier = modifier
-    ) {
+    val cardContent: @Composable () -> Unit = {
         FilledTonalButton(
             onClick = onClick,
             transformation = transformation,
@@ -386,6 +405,35 @@ private fun ScheduleEventCard(
                     }
                 )
         )
+    }
+
+    if (swipeEnabled) {
+        val revealState = rememberRevealState()
+        SwipeToReveal(
+            primaryAction = {
+                PrimaryActionButton(
+                    onClick = {
+                        scope.launch { revealState.animateTo(RevealValue.Covered) }
+                        onRequestDelete()
+                    },
+                    icon = { Icon(painterResource(R.drawable.delete), contentDescription = null) },
+                    text = { Text("删除") },
+                    modifier = Modifier.height(SwipeToRevealDefaults.LargeActionButtonHeight),
+                )
+            },
+            revealState = revealState,
+            onSwipePrimaryAction = {
+                scope.launch { revealState.animateTo(RevealValue.Covered) }
+                onRequestDelete()
+            },
+            modifier = modifier
+        ) {
+            cardContent()
+        }
+    } else {
+        Box(modifier = modifier) {
+            cardContent()
+        }
     }
 }
 
@@ -785,6 +833,21 @@ private fun WearTimePicker(
         },
         timePickerType = TimePickerType.HoursMinutes24H
     )
+}
+
+private fun List<ScheduleEvent>.mergeBreaks(): List<ScheduleEvent> {
+    val result = mutableListOf<ScheduleEvent>()
+    for (event in this) {
+        if (event.type == ScheduleEventType.BREAK) {
+            val last = result.lastOrNull()
+            if (last != null) {
+                result[result.lastIndex] = last.copy(endTime = event.endTime)
+                continue
+            }
+        }
+        result.add(event)
+    }
+    return result
 }
 
 private fun addMinutes(time: String, minutes: Int): String {

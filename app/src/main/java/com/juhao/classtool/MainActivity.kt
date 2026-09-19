@@ -60,6 +60,10 @@ fun WearApp() {
                         onChangePage = { backStack.add(it) }
                     )
                 }
+                
+                entry<ScheduleFullNavScreen> {
+                    ScheduleFullScreen()
+                }
                 entry<EditScheduleNavScreen> {
                     EditScheduleScreen()
                 }
@@ -196,7 +200,10 @@ fun MainScreen(
                         transformation = SurfaceTransformation(transformationSpec),
                         event = currentEvent,
                         highlighted = true,
-                        progress = progress
+                        progress = progress,
+                        onClick = {
+                            onChangePage(ScheduleFullNavScreen)
+                        }
                     )
                 }
             }
