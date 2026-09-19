@@ -104,6 +104,7 @@ fun GreetingScreen(
     HorizontalPagerScaffold(pagerState = pagerState) {
         HorizontalPager(
             state = pagerState,
+            gestureInclusion = PagerDefaults.disableLeftEdgeOnFirstPage(pagerState),
             flingBehavior =
                 PagerDefaults.snapFlingBehavior(
                     state = pagerState,
@@ -149,16 +150,13 @@ fun MainScreen(
     val scrollState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
 
-    val scheduleStore = remember { ScheduleDataStore(context) }
-
-    val schedule by produceState(initialValue = emptyList()) {
-        value = scheduleStore.getSchedule().events
-    }
-
-    var nowMinutes by remember { mutableIntStateOf(currentMinutes()) }
-
-    val today = todayWeekday()
     LaunchedEffect(Unit) {
+        val scheduleStore = ScheduleDataStore(context)
+        val schedule by produceState(initialValue = emptyList()) {
+            value = scheduleStore.getSchedule().events
+        }
+        val nowMinutes = currentMinutes()
+        val today = todayWeekday()
         val currentEvent = schedule.firstOrNull { event ->
             event.weekday == today &&
                 toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
