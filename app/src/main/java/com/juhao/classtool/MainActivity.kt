@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -13,24 +14,22 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
-import androidx.wear.compose.material3.*
 import androidx.wear.compose.foundation.pager.HorizontalPager
 import androidx.wear.compose.foundation.pager.PagerDefaults
+import androidx.wear.compose.foundation.pager.PagerState
 import androidx.wear.compose.foundation.pager.rememberPagerState
+import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
 
 import com.juhao.classtool.key.*
+import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.ui.about.AboutScreen
 import com.juhao.classtool.ui.game.coin.CoinScreen
 import com.juhao.classtool.ui.game.gamemenu.GameMenu
 import com.juhao.classtool.ui.schedule.*
 import com.juhao.classtool.ui.settings.SettingsScreen
-
-import androidx.compose.ui.platform.LocalContext
-import com.juhao.classtool.datastore.ScheduleDataStore
-
 import com.juhao.classtool.theme.WearAppTheme
 import com.juhao.classtool.ui.tool.timer.TimerScreen
 import com.juhao.classtool.ui.tool.toolmenu.ToolMenu
@@ -49,15 +48,44 @@ class MainActivity : ComponentActivity() {
 fun WearApp() {
     val backStack = rememberNavBackStack(MenuScreen)
 
+    val context = LocalContext.current
+    val scheduleStore = remember { ScheduleDataStore(context) }
+    val schedule by produceState(initialValue = emptyList()) {
+        value = scheduleStore.getSchedule().events
+    }
+
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { 4 }
+    )
+
+    var initialJumpDone by remember { mutableStateOf(false) }
+    LaunchedEffect(schedule) {
+        if (!initialJumpDone && schedule.isNotEmpty()) {
+            initialJumpDone = true
+            val today = todayWeekday()
+            val nowMinutes = currentMinutes()
+            val hasCurrent = schedule.any { event ->
+                event.weekday == today &&
+                    toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+                    toMinutes(event.endTime)?.let { nowMinutes < it } == true
+            }
+            if (hasCurrent) {
+                pagerState.animateScrollToPage(1)
+            }
+        }
+    }
+
     val entryProvider =
         remember {
             entryProvider<NavKey> {
                 entry<MenuScreen> {
                     GreetingScreen(
+                        pagerState = pagerState,
                         onChangePage = { backStack.add(it) }
                     )
                 }
-                
+
                 entry<EditScheduleNavScreen> {
                     EditScheduleScreen()
                 }
@@ -93,37 +121,9 @@ fun WearApp() {
 
 @Composable
 fun GreetingScreen(
+    pagerState: PagerState,
     onChangePage: (AppKey) -> Unit
 ) {
-    val context = LocalContext.current
-    val scheduleStore = remember { ScheduleDataStore(context) }
-    val schedule by produceState(initialValue = emptyList()) {
-        value = scheduleStore.getSchedule().events
-    }
-
-    val nowMinutes = currentMinutes()
-    val today = todayWeekday()
-    val currentEvent = schedule.firstOrNull { event ->
-        event.weekday == today &&
-            toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-            toMinutes(event.endTime)?.let { nowMinutes < it } == true
-    }
-
-    val pagerState = rememberPagerState(
-        initialPage = 0,
-        pageCount = { 4 }
-    )
-
-    var initialJumpDone by remember { mutableStateOf(false) }
-    LaunchedEffect(schedule) {
-        if (!initialJumpDone && schedule.isNotEmpty()) {
-            initialJumpDone = true
-            if (currentEvent != null) {
-                pagerState.animateScrollToPage(1)
-            }
-        }
-    }
-
     HorizontalPagerScaffold(pagerState = pagerState) {
         HorizontalPager(
             state = pagerState,
@@ -189,7 +189,7 @@ fun MainScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
-            
+
             item {
                 FilledTonalButton(
                     onClick = { onChangePage(ToolMenuNavScreen) },
