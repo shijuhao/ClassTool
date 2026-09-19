@@ -17,7 +17,6 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.foundation.pager.HorizontalPager
 import androidx.wear.compose.foundation.pager.PagerDefaults
 import androidx.wear.compose.foundation.pager.rememberPagerState
-import androidx.wear.compose.foundation.pager.GestureInclusion
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
@@ -31,13 +30,10 @@ import com.juhao.classtool.ui.settings.SettingsScreen
 
 import androidx.compose.ui.platform.LocalContext
 import com.juhao.classtool.datastore.ScheduleDataStore
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 import com.juhao.classtool.theme.WearAppTheme
 import com.juhao.classtool.ui.tool.timer.TimerScreen
 import com.juhao.classtool.ui.tool.toolmenu.ToolMenu
-import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,43 +95,52 @@ fun WearApp() {
 fun GreetingScreen(
     onChangePage: (AppKey) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(pageCount = { 4 })
+    val context = LocalContext.current
+    val scheduleStore = remember { ScheduleDataStore(context) }
+    val schedule by produceState(initialValue = emptyList()) {
+        value = scheduleStore.getSchedule().events
+    }
+
+    val nowMinutes = currentMinutes()
+    val today = todayWeekday()
+    val currentEvent = schedule.firstOrNull { event ->
+        event.weekday == today &&
+            toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+            toMinutes(event.endTime)?.let { nowMinutes < it } == true
+    }
+
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { 3 }
+    )
+
+    var initialJumpDone by remember { mutableStateOf(false) }
+    LaunchedEffect(schedule) {
+        if (!initialJumpDone && schedule.isNotEmpty()) {
+            initialJumpDone = true
+            if (currentEvent != null) {
+                pagerState.animateScrollToPage(1)
+            }
+        }
+    }
 
     HorizontalPagerScaffold(pagerState = pagerState) {
         HorizontalPager(
             state = pagerState,
-            gestureInclusion = GestureInclusion { false },
-            flingBehavior =
-                PagerDefaults.snapFlingBehavior(
-                    state = pagerState,
-                    maxFlingPages = 1,
-                    snapPositionalThreshold = PagerScaffoldDefaults.HighSnapPositionalThreshold,
-                    snapAnimationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-                ),
+            flingBehavior = PagerDefaults.snapFlingBehavior(
+                state = pagerState,
+                maxFlingPages = 1,
+                snapPositionalThreshold = PagerScaffoldDefaults.HighSnapPositionalThreshold,
+                snapAnimationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+            ),
             rotaryScrollableBehavior = null
         ) { page ->
             AnimatedPage(pageIndex = page, pagerState = pagerState) {
                 when (page) {
-                    0 -> {
-                        MainScreen(
-                            onChangePage = onChangePage,
-                            onGoToFullScreen = {
-                                scope.launch {
-                                    pagerState.animateScrollToPage(1)
-                                }
-                            }
-                        )
-                    }
-                    1 -> {
-                        ScheduleFullScreen()
-                    }
-                    2 -> {
-                        SettingsScreen()
-                    }
-                    else -> {
-                        AboutScreen()
-                    }
+                    0 -> MainScreen(onChangePage = onChangePage)
+                    1 -> ScheduleFullScreen()
+                    2 -> SettingsScreen()
+                    else -> AboutScreen()
                 }
             }
         }
@@ -144,27 +149,10 @@ fun GreetingScreen(
 
 @Composable
 fun MainScreen(
-    onChangePage: (AppKey) -> Unit,
-    onGoToFullScreen: () -> Unit
+    onChangePage: (AppKey) -> Unit
 ) {
-    val context = LocalContext.current
     val scrollState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
-
-    val scheduleStore = ScheduleDataStore(context)
-    val schedule by produceState(initialValue = emptyList()) {
-        value = scheduleStore.getSchedule().events
-    }
-    val nowMinutes = currentMinutes()
-    val today = todayWeekday()
-    val currentEvent = schedule.firstOrNull { event ->
-        event.weekday == today &&
-            toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-            toMinutes(event.endTime)?.let { nowMinutes < it } == true
-    }
-    if (currentEvent != null) {
-        onGoToFullScreen()
-    }
 
     ScreenScaffold(
         scrollState = scrollState
