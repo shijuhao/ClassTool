@@ -17,7 +17,7 @@ import com.juhao.classtool.datastore.SettingsDataStore
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier) {
+fun SettingsScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { SettingsDataStore(context) }
@@ -76,12 +76,13 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
                             contentDescription = null
                         )
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec)
                 )
             }
             
             item {
                 DurationSettingCard(
+                    modifier = Modifier.transformedHeight(this, transformationSpec),
                     title = "上课默认时长（分钟）",
                     transformation = SurfaceTransformation(transformationSpec),
                     minutes = classDuration,
@@ -95,6 +96,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
             
             item {
                 DurationSettingCard(
+                    modifier = Modifier.transformedHeight(this, transformationSpec),
                     title = "课间默认时长（分钟）",
                     transformation = SurfaceTransformation(transformationSpec),
                     minutes = breakDuration,
@@ -111,6 +113,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
 
 @Composable
 private fun DurationSettingCard(
+    modifier: Modifier = Modifier,
     title: String,
     minutes: Int,
     range: IntRange,
@@ -119,7 +122,7 @@ private fun DurationSettingCard(
     transformation: SurfaceTransformation? = null
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         transformation = transformation,
         colors = CardDefaults.cardColors()
     ) {

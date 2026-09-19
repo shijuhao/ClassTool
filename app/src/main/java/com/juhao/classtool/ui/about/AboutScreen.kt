@@ -5,7 +5,6 @@ import androidx.core.net.toUri
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -14,13 +13,11 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
-import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
 import com.juhao.classtool.R
-import com.juhao.classtool.theme.AppCardDefaults
 import com.juhao.classtool.utils.getAppVersionInfo
 
 @Composable
-fun AboutScreen(modifier: Modifier = Modifier) {
+fun AboutScreen() {
     val context = LocalContext.current
     
     val listState = rememberTransformingLazyColumnState()
@@ -71,7 +68,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
@@ -87,7 +84,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
@@ -105,7 +102,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }

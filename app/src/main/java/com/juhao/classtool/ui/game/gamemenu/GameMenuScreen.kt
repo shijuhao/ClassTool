@@ -3,27 +3,19 @@ package com.juhao.classtool.ui.game.gamemenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
-import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
 import com.juhao.classtool.key.*
 import com.juhao.classtool.R
-import com.juhao.classtool.theme.AppCardDefaults
 
 @Composable
 fun GameMenu(
-    modifier: Modifier = Modifier,
     onChangePage: (AppKey) -> Unit
 ) {
-    val context = LocalContext.current
-    
     val listState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
     
@@ -59,6 +51,7 @@ fun GameMenu(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    transformation = SurfaceTransformation(transformationSpec)
                 )
             }
         }

@@ -16,6 +16,7 @@ import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.Weekday
 import java.time.LocalDate
 import java.time.LocalTime
+import androidx.core.graphics.toColorInt
 
 @Composable
 fun ScheduleEventCard(
@@ -126,7 +127,7 @@ fun weekdayLabel(weekday: Weekday): String = when (weekday) {
 }
 
 fun parseColor(hex: String): Color = runCatching {
-    Color(android.graphics.Color.parseColor(hex))
+    Color(hex.toColorInt())
 }.getOrElse { Color.DarkGray }
 
 fun toMinutes(time: String): Int? {

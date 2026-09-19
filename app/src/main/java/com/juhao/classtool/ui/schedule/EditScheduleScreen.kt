@@ -5,14 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -33,9 +33,9 @@ import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.Weekday
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 private enum class DialogStage {
     EDIT,
@@ -82,11 +82,11 @@ fun EditScheduleScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { ScheduleDataStore(context) }
-    
+
     val settingsStore = remember { SettingsDataStore(context) }
     val classDuration by settingsStore.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by settingsStore.breakDurationFlow.collectAsState(initial = 10)
-    
+
     val weekdays = Weekday.entries.toList()
     val today = todayWeekday()
     val initialPage = weekdays.indexOf(today).coerceAtLeast(0)
@@ -94,20 +94,20 @@ fun EditScheduleScreen(
         initialPage = initialPage,
         pageCount = { weekdays.size }
     )
-    
+
     var showDialog by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
 
-    var refreshKey by remember { mutableStateOf(0) }
-    val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
+    var refreshKey by remember { mutableIntStateOf(0) }
+    val schedule by produceState(initialValue = emptyList(), refreshKey) {
         value = store.getSchedule().events
     }
 
-    var nowMinutes by remember { mutableStateOf(currentMinutes()) }
+    var nowMinutes by remember { mutableIntStateOf(currentMinutes()) }
     LaunchedEffect(Unit) {
         while (true) {
             nowMinutes = currentMinutes()
-            delay(30_000L)
+            delay(30_000L.milliseconds)
         }
     }
 
@@ -121,9 +121,7 @@ fun EditScheduleScreen(
             .filter { it.weekday == currentWeekday }
             .sortedBy { it.startTime }
 
-        val defaultStart = dayEventsForDefault
-            .mapNotNull { it.endTime }
-            .maxOrNull()
+        val defaultStart = dayEventsForDefault.maxOfOrNull { it.endTime }
             ?: "08:00"
 
         EventEditDialog(
@@ -147,6 +145,48 @@ fun EditScheduleScreen(
             }
         )
         return
+    }
+
+    var pendingDelete by remember { mutableStateOf<ScheduleEvent?>(null) }
+
+    pendingDelete?.let { target ->
+        AlertDialog(
+            visible = true,
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("删除事件") },
+            confirmButton = {
+                AlertDialogDefaults.ConfirmButton(
+                    onClick = {
+                        scope.launch {
+                            store.removeEvent(target.id)
+                            refreshKey++
+                        }
+                        pendingDelete = null
+                    }
+                )
+            },
+            dismissButton = {
+                AlertDialogDefaults.DismissButton(
+                    onClick = { pendingDelete = null }
+                )
+            }
+        ) {
+            item {
+                Text(
+                    text = target.courseName ?: when (target.type) {
+                        ScheduleEventType.BREAK -> "课间休息"
+                        ScheduleEventType.ACTIVITY -> "活动"
+                        ScheduleEventType.CLASS -> "未命名"
+                    }
+                )
+            }
+            item {
+                Text(
+                    text = "${target.startTime} - ${target.endTime}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
     }
 
     HorizontalPagerScaffold(
@@ -201,8 +241,8 @@ fun EditScheduleScreen(
                         val start = toMinutes(event.startTime)
                         val end = toMinutes(event.endTime)
                         val highlighted = weekday == today &&
-                            start != null && end != null &&
-                            nowMinutes in start until end
+                                start != null && end != null &&
+                                nowMinutes in start until end
                         ScheduleEventCard(
                             transformation = SurfaceTransformation(transformationSpec),
                             event = event,
@@ -211,12 +251,7 @@ fun EditScheduleScreen(
                                 editingEvent = event
                                 showDialog = true
                             },
-                            onDelete = {
-                                scope.launch {
-                                    store.removeEvent(event.id)
-                                    refreshKey++
-                                }
-                            }
+                            onRequestDelete = { pendingDelete = event }
                         )
                     }
                 }
@@ -232,63 +267,84 @@ private fun ScheduleEventCard(
     event: ScheduleEvent,
     highlighted: Boolean,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onRequestDelete: () -> Unit
 ) {
-    val color = event.courseColor?.let { parseColor(it) } ?: Color.DarkGray
-    Card(
-        onClick = onClick,
-        transformation = transformation,
-        colors = if (highlighted) {
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+    val scope = rememberCoroutineScope()
+    val color = event.courseColor?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
+
+    val revealState = rememberRevealState()
+
+    SwipeToReveal(
+        primaryAction = {
+            PrimaryActionButton(
+                onClick = {
+                    scope.launch {
+                        revealState.animateTo(RevealValue.Covered)
+                    }
+                    onRequestDelete()
+                },
+                icon = { Icon(painterResource(R.drawable.delete), contentDescription = null) },
+                text = { Text("删除") },
+                modifier = Modifier.height(SwipeToRevealDefaults.LargeActionButtonHeight),
             )
-        } else {
-            CardDefaults.cardColors()
+        },
+        revealState = revealState,
+        onSwipePrimaryAction = {
+            scope.launch {
+                revealState.animateTo(RevealValue.Covered)
+            }
+            onRequestDelete()
         },
         modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (highlighted) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(20.dp)
-                    )
-                } else {
-                    Modifier
-                }
-            )
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(color)
-            )
-            Spacer(Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = event.courseName ?: when (event.type) {
-                        ScheduleEventType.BREAK -> "课间休息"
-                        ScheduleEventType.ACTIVITY -> "活动"
-                        ScheduleEventType.CLASS -> "未命名"
+        Card(
+            onClick = onClick,
+            transformation = transformation,
+            colors = if (highlighted) {
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            } else {
+                CardDefaults.cardColors()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (highlighted) {
+                        Modifier.border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                    } else {
+                        Modifier
                     }
                 )
-                Text(
-                    text = "${event.startTime} - ${event.endTime}",
-                    style = MaterialTheme.typography.bodySmall
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(color)
                 )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    painter = painterResource(R.drawable.delete),
-                    tint = MaterialTheme.colorScheme.error,
-                    contentDescription = null
-                )
+                Spacer(Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = event.courseName ?: when (event.type) {
+                            ScheduleEventType.BREAK -> "课间休息"
+                            ScheduleEventType.ACTIVITY -> "活动"
+                            ScheduleEventType.CLASS -> "未命名"
+                        }
+                    )
+                    Text(
+                        text = "${event.startTime} - ${event.endTime}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
         }
     }
@@ -309,7 +365,8 @@ private fun EventEditDialog(
         if (t == ScheduleEventType.BREAK) breakDuration else classDuration
 
     val initialStart = existing?.startTime ?: defaultStartTime ?: "08:00"
-    val initialEnd = existing?.endTime ?: addMinutes(initialStart, durationFor(existing?.type ?: ScheduleEventType.CLASS))
+    val initialEnd =
+        existing?.endTime ?: addMinutes(initialStart, durationFor(ScheduleEventType.CLASS))
 
     var type by remember { mutableStateOf(existing?.type ?: ScheduleEventType.CLASS) }
     var name by remember { mutableStateOf(existing?.courseName ?: "") }
@@ -325,7 +382,7 @@ private fun EventEditDialog(
             endTime = addMinutes(startTime, durationFor(type))
         }
     }
-    
+
     val presets = if (type == ScheduleEventType.ACTIVITY) activityPresets else presetCourses
     var isCustom by remember {
         mutableStateOf(
@@ -366,6 +423,7 @@ private fun EventEditDialog(
             )
             return
         }
+
         DialogStage.END_TIME -> {
             WearTimePicker(
                 initial = endTime,
@@ -378,6 +436,7 @@ private fun EventEditDialog(
             )
             return
         }
+
         DialogStage.EDIT -> Unit
     }
 
@@ -425,69 +484,104 @@ private fun EventEditDialog(
         }
     ) {
         item {
-            ButtonGroup(Modifier.fillMaxWidth()) {
-                Button(
-                    label = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text("上课") } },
-                    onClick = { type = ScheduleEventType.CLASS },
-                    colors = if (type == ScheduleEventType.CLASS) {
-                        ButtonDefaults.buttonColors()
-                    } else {
-                        ButtonDefaults.filledTonalButtonColors()
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                listOf(
+                    ScheduleEventType.CLASS to "上课",
+                    ScheduleEventType.BREAK to "课间",
+                    ScheduleEventType.ACTIVITY to "活动"
+                ).forEach { (t, label) ->
+                    val selected = type == t
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceContainerHigh
+                            )
+                            .clickable { type = t }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                )
-                Button(
-                    label = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text("课间") } },
-                    onClick = { type = ScheduleEventType.BREAK },
-                    colors = if (type == ScheduleEventType.BREAK) {
-                        ButtonDefaults.buttonColors()
-                    } else {
-                        ButtonDefaults.filledTonalButtonColors()
-                    }
-                )
-                Button(
-                    label = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Text("活动") } },
-                    onClick = { type = ScheduleEventType.ACTIVITY },
-                    colors = if (type == ScheduleEventType.ACTIVITY) {
-                        ButtonDefaults.buttonColors()
-                    } else {
-                        ButtonDefaults.filledTonalButtonColors()
-                    }
-                )
+                }
             }
         }
 
         if (type != ScheduleEventType.BREAK) {
             item {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    presets.forEach { preset ->
-                        val selected = !isCustom && name == preset.name && color == preset.color
-                        Button(
-                            label = { Text(preset.name) },
-                            onClick = {
-                                name = preset.name
-                                color = preset.color
-                                isCustom = false
-                            },
-                            colors = if (selected) {
-                                ButtonDefaults.buttonColors()
-                            } else {
-                                ButtonDefaults.filledTonalButtonColors()
-                            }
-                        )
-                    }
-                    Button(
-                        label = { Text("自定义") },
-                        onClick = { showCustomDialog = true },
-                        colors = if (isCustom && name.isNotBlank()) {
-                            ButtonDefaults.buttonColors()
-                        } else {
-                            ButtonDefaults.filledTonalButtonColors()
+                    items(presets) { preset ->
+                        val selected = !isCustom && name == preset.name
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
+                                .clickable {
+                                    name = preset.name
+                                    color = preset.color
+                                    isCustom = false
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(parseColor(preset.color ?: "#888888"))
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = preset.name,
+                                color = if (selected) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSecondaryContainer,
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
-                    )
+                    }
+
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    if (isCustom && name.isNotBlank())
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceContainerHigh
+                                )
+                                .clickable { showCustomDialog = true }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.edit),
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "自定义",
+                                color = if (isCustom) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                 }
             }
         }
@@ -550,7 +644,7 @@ private fun CustomCourseDialog(
     AlertDialog(
         visible = true,
         onDismissRequest = onDismiss,
-        title = { Text("自定义课程") },
+        title = { Text("自定义") },
         confirmButton = {
             AlertDialogDefaults.ConfirmButton(
                 onClick = {
@@ -566,7 +660,7 @@ private fun CustomCourseDialog(
     ) {
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "课程名称")
+                Text(text = "名称")
                 Spacer(Modifier.height(4.dp))
                 BasicTextField(
                     value = customName,
@@ -588,7 +682,7 @@ private fun CustomCourseDialog(
                         ) {
                             if (customName.isEmpty()) {
                                 Text(
-                                    text = "输入课程名称",
+                                    text = "输入名称",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -601,7 +695,7 @@ private fun CustomCourseDialog(
 
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "课程颜色")
+                Text(text = "颜色")
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     paletteColors.forEach { hex ->

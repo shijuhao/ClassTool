@@ -1,0 +1,262 @@
+name: Build App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit message
+        id: commit
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          if echo "$COMMIT_MSG" | grep -qiE "^[^:]+: .+"; then
+            echo "release=true" >> $GITHUB_OUTPUT
+          else
+            echo "release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+          
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'ci-version.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Get version and commit hash
+        id: version
+        run: |
+          BASE_VERSION=$(grep -E '^\s*versionName\s*=\s*"' app/build.gradle.kts | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          
+          if [ "${{ steps.commit.outputs.release }}" = "true" ]; then
+            FINAL_VERSION="${BASE_VERSION}-${COMMIT_HASH}"
+          else
+            FINAL_VERSION="${BASE_VERSION}-dev"
+          fi
+          echo "final_version=$FINAL_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build and Sign APK
+        run: |
+          cat > ci-version.gradle << 'EOF'
+          allprojects { project ->
+            project.afterEvaluate {
+              if (project.hasProperty('android')) {
+                project.android.defaultConfig.versionName = project.findProperty('customVersion') ?: project.android.defaultConfig.versionName
+              }
+            }
+          }
+          EOF
+        
+          ./gradlew assembleRelease \
+            -I ci-version.gradle \
+            -PcustomVersion="${{ steps.version.outputs.final_version }}" \
+            -Pandroid.injected.signing.store.file=$(pwd)/keystore.jks \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload Signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-signed
+          path: app/build/outputs/apk/release/*.apk
+
+      - name: Get current date
+        if: steps.commit.outputs.release == 'true'
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_OUTPUT
+
+      - name: Get commit list
+        if: steps.commit.outputs.release == 'true'
+        id: commits
+        run: |
+          {
+            echo 'list<<EOF'
+            git log -5 --format='- %s (%an)' --no-merges
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create Prerelease
+        if: steps.commit.outputs.release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/*.apk
+          name: ${{ steps.version.outputs.final_version }}
+          tag_name: ${{ steps.version.outputs.final_version }}
+          body: |
+            ### 🎉 快照版发布！
+            - **版本**: ${{ steps.version.outputs.final_version }}
+            - **基础版本**: ${{ steps.version.outputs.base_version }}
+            - **Commit**: ${{ steps.version.outputs.commit_hash }}
+            - **触发者**: ${{ github.actor }}
+            - **构建时间**: ${{ steps.date.outputs.date }}
+            
+            ### 最近提交
+            ${{ steps.commits.outputs.list }}
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare build message
+        run: |
+          if [ "${{ steps.commit.outputs.release }}" = "true" ]; then
+            RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.final_version }}"
+            cat > build-body.md <<EOF
+          ### 快照版本构建完成
+          
+          **版本**: ${{ steps.version.outputs.final_version }}
+          **触发者**: ${{ github.actor }}
+          **构建时间**: ${{ steps.date.outputs.date }}
+          
+          ### 最近提交
+          ${{ steps.commits.outputs.list }}
+          
+          ### 下载
+          [点击下载 APK](${RELEASE_URL})
+          EOF
+          else
+          cat > build-body.md <<EOF
+          ### 测试版本构建完成
+          
+          **版本**: ${{ steps.version.outputs.final_version }}
+          **触发者**: ${{ github.actor }}
+          **构建时间**: $(date +'%Y-%m-%d %H:%M:%S')
+          
+          ### 下载
+          [工作流 artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ### 注意
+          此为开发版本，不适合日用。
+          EOF
+          fi
+
+      - name: Notify bot about build
+        continue-on-error: true
+        env:
+          BOT_SEND_TOKEN_VAR: ${{ vars.YHCHAT_BOT_SEND_TOKEN }}
+          BOT_SEND_TOKEN_SECRET: ${{ secrets.YHCHAT_BOT_SEND_TOKEN }}
+          BOT_RECV_ID_VAR: ${{ vars.YHCHAT_BOT_RECV_ID }}
+          BOT_RECV_ID_SECRET: ${{ secrets.YHCHAT_BOT_RECV_ID }}
+          BOT_RECV_TYPE_VAR: ${{ vars.YHCHAT_BOT_RECV_TYPE }}
+          BOT_RECV_TYPE_SECRET: ${{ secrets.YHCHAT_BOT_RECV_TYPE }}
+        run: |
+          BOT_SEND_TOKEN="${BOT_SEND_TOKEN_VAR:-$BOT_SEND_TOKEN_SECRET}"
+          BOT_RECV_ID="${BOT_RECV_ID_VAR:-$BOT_RECV_ID_SECRET}"
+          BOT_RECV_TYPE="${BOT_RECV_TYPE_VAR:-$BOT_RECV_TYPE_SECRET}"
+
+          if [ -z "$BOT_SEND_TOKEN" ] || [ -z "$BOT_RECV_ID" ] || [ -z "$BOT_RECV_TYPE" ]; then
+            echo "Skip bot notify"
+            exit 0
+          fi
+
+          send_markdown() {
+            local text="$1"
+            local payload
+            payload=$(jq -n \
+              --arg recvId "$BOT_RECV_ID" \
+              --arg recvType "$BOT_RECV_TYPE" \
+              --arg text "$text" \
+              '{
+                recvId: $recvId,
+                recvType: $recvType,
+                contentType: "markdown",
+                content: {
+                  text: $text
+                }
+              }')
+
+            curl --fail-with-body \
+              -X POST "https://chat-go.jwzhd.com/open-apis/v1/bot/send?token=${BOT_SEND_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$payload"
+          }
+
+          send_file() {
+            local file_path="$1"
+            local file_name
+            local upload_response
+            local file_key
+            local payload
+
+            file_name=$(basename "$file_path")
+            upload_response=$(curl --fail-with-body -sS \
+              -X POST "https://chat-go.jwzhd.com/open-apis/v1/file/upload?token=${BOT_SEND_TOKEN}" \
+              -F "file=@${file_path};filename=${file_name}") || return 1
+
+            file_key=$(printf '%s' "$upload_response" | jq -r '.data.fileKey // empty')
+            if [ -z "$file_key" ]; then
+              echo "Upload did not return fileKey for ${file_name}"
+              return 1
+            fi
+
+            payload=$(jq -n \
+              --arg recvId "$BOT_RECV_ID" \
+              --arg recvType "$BOT_RECV_TYPE" \
+              --arg fileKey "$file_key" \
+              '{
+                recvId: $recvId,
+                recvType: $recvType,
+                contentType: "file",
+                content: {
+                  fileKey: $fileKey
+                }
+              }')
+
+            curl --fail-with-body \
+              -X POST "https://chat-go.jwzhd.com/open-apis/v1/bot/send?token=${BOT_SEND_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$payload"
+          }
+
+          BUILD_MESSAGE="$(cat build-body.md)"
+
+          if ! send_markdown "$BUILD_MESSAGE"; then
+            echo "Markdown bot notification failed"
+            exit 0
+          fi
+
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+
+          if [ -n "$APK_PATH" ]; then
+            APK_SIZE=$(stat -c%s "$APK_PATH")
+
+            if [ "$APK_SIZE" -lt 20971520 ]; then
+              if ! send_file "$APK_PATH"; then
+                echo "Bot file send failed"
+              fi
+            else
+              echo "APK size $(($APK_SIZE / 1048576))MB >= 20MB, sent link only"
+            fi
+          fi

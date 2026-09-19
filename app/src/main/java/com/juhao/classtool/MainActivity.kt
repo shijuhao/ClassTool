@@ -6,9 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -22,7 +20,6 @@ import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
-import com.juhao.classtool.R
 
 import com.juhao.classtool.key.*
 import com.juhao.classtool.ui.about.AboutScreen
@@ -33,11 +30,13 @@ import com.juhao.classtool.ui.settings.SettingsScreen
 
 import androidx.compose.ui.platform.LocalContext
 import com.juhao.classtool.datastore.ScheduleDataStore
-import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.SettingsDataStore
 import kotlinx.coroutines.delay
 
 import com.juhao.classtool.theme.WearAppTheme
+import com.juhao.classtool.ui.tool.timer.TimerScreen
+import com.juhao.classtool.ui.tool.toolmenu.ToolMenu
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,33 +52,39 @@ class MainActivity : ComponentActivity() {
 fun WearApp() {
     val backStack = rememberNavBackStack(MenuScreen)
 
-    WearAppTheme {
-        AppScaffold {
-            val entryProvider =
-                remember {
-                    entryProvider<NavKey> {
-                        entry<MenuScreen> {
-                            GreetingScreen(
-                                onChangePage = { backStack.add(it) }
-                            )
-                        }
-                        entry<ViewScheduleNavScreen> {
-                            ViewScheduleScreen()
-                        }
-                        entry<EditScheduleNavScreen> {
-                            EditScheduleScreen()
-                        }
-                        entry<GameMenuNavScreen> {
-                            GameMenu(
-                                onChangePage = { backStack.add(it) }
-                            )
-                        }
-                        entry<CoinNavScreen> {
-                            CoinScreen()
-                        }
-                    }
+    val entryProvider =
+        remember {
+            entryProvider<NavKey> {
+                entry<MenuScreen> {
+                    GreetingScreen(
+                        onChangePage = { backStack.add(it) }
+                    )
+                }
+                entry<ViewScheduleNavScreen> {
+                    ViewScheduleScreen()
+                }
+                entry<EditScheduleNavScreen> {
+                    EditScheduleScreen()
                 }
 
+                entry<ToolMenuNavScreen> {
+                    ToolMenu(onChangePage = { backStack.add(it) })
+                }
+                entry<TimerNavScreen> {
+                    TimerScreen()
+                }
+
+                entry<GameMenuNavScreen> {
+                    GameMenu(onChangePage = { backStack.add(it) })
+                }
+                entry<CoinNavScreen> {
+                    CoinScreen()
+                }
+            }
+        }
+
+    WearAppTheme {
+        AppScaffold {
             val swipeDismissableSceneStrategy = rememberSwipeDismissableSceneStrategy<NavKey>()
 
             NavDisplay(
@@ -93,9 +98,8 @@ fun WearApp() {
 
 @Composable
 fun GreetingScreen(
-    onChangePage: (AppKey) -> Unit,
-    modifier: Modifier = Modifier
-) {    
+    onChangePage: (AppKey) -> Unit
+) {
     val pagerState = rememberPagerState(pageCount = { 3 })
 
     HorizontalPagerScaffold(pagerState = pagerState) {
@@ -111,12 +115,16 @@ fun GreetingScreen(
             rotaryScrollableBehavior = null,
         ) { page ->
             AnimatedPage(pageIndex = page, pagerState = pagerState) {
-                if (page == 0) {
-                    MainScreen(onChangePage)
-                } else if (page == 1) {
-                    SettingsScreen()
-                } else {
-                    AboutScreen()
+                when (page) {
+                    0 -> {
+                        MainScreen(onChangePage)
+                    }
+                    1 -> {
+                        SettingsScreen()
+                    }
+                    else -> {
+                        AboutScreen()
+                    }
                 }
             }
         }
@@ -125,8 +133,7 @@ fun GreetingScreen(
 
 @Composable
 fun MainScreen(
-    onChangePage: (AppKey) -> Unit,
-    modifier: Modifier = Modifier
+    onChangePage: (AppKey) -> Unit
 ) {
     val context = LocalContext.current
     val scrollState = rememberTransformingLazyColumnState()
@@ -136,15 +143,15 @@ fun MainScreen(
     val scheduleStore = remember { ScheduleDataStore(context) }
 
     val showEventOnHome by settingsStore.showEventOnHomeFlow.collectAsState(initial = true)
-    val schedule by produceState(initialValue = emptyList<ScheduleEvent>()) {
+    val schedule by produceState(initialValue = emptyList()) {
         value = scheduleStore.getSchedule().events
     }
 
-    var nowMinutes by remember { mutableStateOf(currentMinutes()) }
+    var nowMinutes by remember { mutableIntStateOf(currentMinutes()) }
     LaunchedEffect(Unit) {
         while (true) {
             nowMinutes = currentMinutes()
-            delay(10_000L)
+            delay(10_000L.milliseconds)
         }
     }
 
@@ -252,14 +259,14 @@ fun MainScreen(
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
             
             item {
                 FilledTonalButton(
-                    onClick = { onChangePage(GameMenuNavScreen) },
+                    onClick = { onChangePage(ToolMenuNavScreen) },
                     label = { Text("工具") },
                     icon = {
                         Icon(
@@ -268,7 +275,7 @@ fun MainScreen(
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
@@ -284,7 +291,7 @@ fun MainScreen(
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }

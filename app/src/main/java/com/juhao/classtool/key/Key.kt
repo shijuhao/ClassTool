@@ -11,12 +11,15 @@ data object MenuScreen : AppKey
 
 @Serializable
 data object EditScheduleNavScreen : AppKey
-
 @Serializable
 data object ViewScheduleNavScreen : AppKey
 
 @Serializable
-data object GameMenuNavScreen : AppKey
+data object ToolMenuNavScreen : AppKey
+@Serializable
+data object TimerNavScreen : AppKey
 
+@Serializable
+data object GameMenuNavScreen : AppKey
 @Serializable
 data object CoinNavScreen : AppKey

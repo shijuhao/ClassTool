@@ -1,4 +1,4 @@
-package com.juhao.classtool.ui.game.coin
+package com.juhao.classtool.ui.tool.toolmenu
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -9,17 +9,16 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import com.juhao.classtool.key.*
 import com.juhao.classtool.R
-import kotlin.random.Random
 
 @Composable
-fun CoinScreen(modifier: Modifier = Modifier) {
+fun ToolMenu(
+    onChangePage: (AppKey) -> Unit
+) {
     val listState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
     
-    var showDialog by remember { mutableStateOf(false) }
-    var coinIsInPositive by remember { mutableStateOf(false) }
-
     ScreenScaffold(
         scrollState = listState
     ) { contentPadding ->
@@ -37,49 +36,23 @@ fun CoinScreen(modifier: Modifier = Modifier) {
                                 ListHeaderDefaults.minimumTopListContentPadding
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
-                ) { Text(text = "抛硬币") }
+                ) { Text(text = "工具") }
             }
             item {
-                Button(
-                    label = {
-                        Text(
-                            text = "开抛！",
-                            modifier = modifier.fillMaxWidth()
+                FilledTonalButton(
+                    onClick = { onChangePage(TimerNavScreen) },
+                    label = { Text("秒表") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.timer),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    onClick = { 
-                        coinIsInPositive = Random.nextBoolean()
-                        showDialog = true
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec),
+                    modifier = Modifier.fillMaxWidth(),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
         }
     }
-    
-    AlertDialog(
-        visible = showDialog,
-        onDismissRequest = {
-            showDialog = false
-        },
-        icon = {
-            Icon(
-                painter = painterResource(R.drawable.info),
-                contentDescription = null
-            )
-        },
-        title = { Text(text = "结果") },
-        text = { Text(text = "硬币在 ${if (coinIsInPositive) "正面" else "背面"}") },
-        edgeButton = {
-            AlertDialogDefaults.EdgeButton(
-                onClick = {
-                    showDialog = false
-                }
-            )
-        }
-    )
 }
