@@ -1,6 +1,8 @@
 package com.juhao.classtool.ui.schedule
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -10,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material3.*
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
@@ -70,17 +73,37 @@ fun ScheduleFullScreen() {
         }
     }
 
-    val remainingText = if (currentEvent != null) {
-        val end = toMinutes(currentEvent.endTime)
-        if (end != null) {
-            val remainingSec = end * 60 - nowSecondOfDay
-            if (remainingSec > 0) {
-                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
+    val remainingSec = if (currentEvent != null) {
+        toMinutes(currentEvent.endTime)?.let { it * 60 - nowSecondOfDay }
+    } else {
+        null
+    }
+
+    val isFinalMinute = remainingSec != null && remainingSec in 1..60
+
+    val finalMinuteProgress by animateFloatAsState(
+        targetValue = if (isFinalMinute) 1f else 0f,
+        animationSpec = tween(400),
+        label = "finalMinute"
+    )
+
+    val baseDisplaySize = MaterialTheme.typography.displayMedium.fontSize.value
+    val baseTitleSize = MaterialTheme.typography.titleLarge.fontSize.value
+    val baseMediumSize = MaterialTheme.typography.titleMedium.fontSize.value
+
+    val displaySize = baseDisplaySize * (1f - 0.4f * finalMinuteProgress)
+    val titleSize = baseTitleSize * (1f - 0.4f * finalMinuteProgress)
+    val mediumSize = baseMediumSize * (1f + 2f * finalMinuteProgress)
+
+    val remainingText = if (remainingSec != null) {
+        if (remainingSec > 0) {
+            if (isFinalMinute) {
+                "%d".format(remainingSec)
             } else {
-                "剩余 00:00"
+                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
             }
         } else {
-            null
+            "剩余 00:00"
         }
     } else {
         null
@@ -120,7 +143,9 @@ fun ScheduleFullScreen() {
                                 ScheduleEventType.ACTIVITY -> "活动"
                                 ScheduleEventType.CLASS -> "未命名"
                             },
-                        style = MaterialTheme.typography.displayMedium,
+                        style = MaterialTheme.typography.displayMedium.copy(
+                            fontSize = displaySize.sp
+                        ),
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Clip,
@@ -135,14 +160,18 @@ fun ScheduleFullScreen() {
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "${currentEvent.startTime} - ${currentEvent.endTime}",
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = titleSize.sp
+                        ),
                         textAlign = TextAlign.Center
                     )
                     if (remainingText != null) {
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = remainingText,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = mediumSize.sp
+                            ),
                             textAlign = TextAlign.Center,
                             color = eventColor
                         )
