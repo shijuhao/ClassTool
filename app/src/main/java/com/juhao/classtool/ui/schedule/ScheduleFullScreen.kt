@@ -18,16 +18,17 @@ import kotlinx.coroutines.delay
 import java.time.LocalTime
 
 @Composable
-fun ScheduleFullScreen() {
+fun ScheduleFullScreen(isActive: Boolean = true) {
     val context = LocalContext.current
     val store = remember { ScheduleDataStore(context) }
 
     var schedule by remember { mutableStateOf(emptyList<ScheduleEvent>()) }
     var nowSecondOfDay by remember { mutableIntStateOf(currentSecondOfDay()) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isActive) {
+        if (!isActive) return@LaunchedEffect
+        schedule = store.getSchedule().events
         while (true) {
-            schedule = store.getSchedule().events
             nowSecondOfDay = currentSecondOfDay()
             delay(1000L)
         }

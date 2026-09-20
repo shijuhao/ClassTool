@@ -78,8 +78,8 @@ private val activityPresets = listOf(
 )
 
 private val paletteColors = listOf(
-    "#FF5722", "#4CAF50", "#2196F3",
-    "#9C27B0", "#FFC107", "#607D8B"
+    "#FF5722", "#4CAF50", "#2196F3", "#009688",
+    "#FF9800", "#9C27B0", "#FFC107", "#607D8B"
 )
 
 @Composable
@@ -652,7 +652,7 @@ private fun EventEditDialog(
                                 .clip(RoundedCornerShape(50))
                                 .background(
                                     if (isCustom && name.isNotBlank())
-                                        MaterialTheme.colorScheme.primaryContainer
+                                        MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.surfaceContainerHigh
                                 )
                                 .clickable { showCustomDialog = true }
@@ -786,8 +786,8 @@ private fun CustomCourseDialog(
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(text = "颜色")
                 Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    paletteColors.forEach { hex ->
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(paletteColors) { hex ->
                         val selected = customColor == hex
                         Box(
                             modifier = Modifier
