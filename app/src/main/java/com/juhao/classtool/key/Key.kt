@@ -21,3 +21,8 @@ data object TimerNavScreen : AppKey
 data object GameMenuNavScreen : AppKey
 @Serializable
 data object CoinNavScreen : AppKey
+
+@Serializable
+data object SettingsNavScreen : AppKey
+@Serializable
+data object AboutNavScreen : AppKey

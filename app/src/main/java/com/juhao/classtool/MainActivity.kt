@@ -53,7 +53,7 @@ fun WearApp() {
 
     val pagerState = rememberPagerState(
         initialPage = 0,
-        pageCount = { 4 }
+        pageCount = { 2 }
     )
 
     LaunchedEffect(Unit) {
@@ -94,6 +94,12 @@ fun WearApp() {
                 entry<CoinNavScreen> {
                     CoinScreen()
                 }
+                entry<SettingsNavScreen> {
+                    SettingsScreen()
+                }
+                entry<AboutNavScreen> {
+                    AboutScreen()
+                }
             }
         }
 
@@ -129,11 +135,7 @@ fun GreetingScreen(
             AnimatedPage(pageIndex = page, pagerState = pagerState) {
                 when (page) {
                     0 -> MainScreen(onChangePage = onChangePage)
-                    1 -> ScheduleFullScreen(
-                        isActive = pagerState.currentPage == 1 && !pagerState.isScrollInProgress
-                    )
-                    2 -> SettingsScreen()
-                    else -> AboutScreen()
+                    else -> ScheduleFullScreen()
                 }
             }
         }
@@ -206,6 +208,38 @@ fun MainScreen(
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.toys),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(SettingsNavScreen) },
+                    label = { Text("设置") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(AboutNavScreen) },
+                    label = { Text("关于") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.info),
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
