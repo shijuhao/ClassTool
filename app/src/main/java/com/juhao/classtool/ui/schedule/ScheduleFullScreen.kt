@@ -89,7 +89,7 @@ fun ScheduleFullScreen() {
         label = "finalMinute"
     )
 
-    val displaySize = 40f * (1f - 0.4f * finalMinuteProgress)
+    val displaySize = 32f * (1f - 0.4f * finalMinuteProgress)
     val titleSize = 20f * (1f - 0.4f * finalMinuteProgress)
     val mediumSize = 14f * (1f + 2f * finalMinuteProgress)
 
@@ -118,17 +118,6 @@ fun ScheduleFullScreen() {
             contentAlignment = Alignment.Center
         ) {
             if (currentEvent != null) {
-                CircularProgressIndicator(
-                    progress = { progressAnim.value },
-                    modifier = Modifier.fillMaxSize(),
-                    strokeWidth = 10.dp,
-                    startAngle = 120f,
-                    endAngle = 60f,
-                    colors = ProgressIndicatorDefaults.colors(
-                        trackColor = eventColor.copy(alpha = 0.2f),
-                        indicatorColor = eventColor,
-                    )
-                )
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
@@ -179,6 +168,16 @@ fun ScheduleFullScreen() {
                         )
                     }
                 }
+                CircularProgressIndicator(
+                    progress = { progressAnim.value },
+                    modifier = Modifier.fillMaxSize(),
+                    startAngle = 120f,
+                    endAngle = 60f,
+                    colors = ProgressIndicatorDefaults.colors(
+                        trackColor = eventColor.copy(alpha = 0.2f),
+                        indicatorColor = eventColor,
+                    )
+                )
             } else {
                 Text(
                     text = "当前没有事件",
