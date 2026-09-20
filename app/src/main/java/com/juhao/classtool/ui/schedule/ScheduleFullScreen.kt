@@ -30,8 +30,8 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
             if (isActive) {
                 schedule = store.getSchedule().events
                 nowSecondOfDay = currentSecondOfDay()
-                delay(1000L)
             }
+            delay(1000L)
         }
     }
 
