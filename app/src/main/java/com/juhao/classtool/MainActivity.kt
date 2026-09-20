@@ -129,7 +129,9 @@ fun GreetingScreen(
             AnimatedPage(pageIndex = page, pagerState = pagerState) {
                 when (page) {
                     0 -> MainScreen(onChangePage = onChangePage)
-                    1 -> ScheduleFullScreen(isActive = pagerState.currentPage == 1)
+                    1 -> ScheduleFullScreen(
+                        isActive = pagerState.currentPage == 1 && !pagerState.isScrollInProgress
+                    )
                     2 -> SettingsScreen()
                     else -> AboutScreen()
                 }

@@ -25,12 +25,11 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
     var schedule by remember { mutableStateOf(emptyList<ScheduleEvent>()) }
     var nowSecondOfDay by remember { mutableIntStateOf(currentSecondOfDay()) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isActive) {
+        if (!isActive) return@LaunchedEffect
+        schedule = store.getSchedule().events
         while (true) {
-            if (isActive) {
-                schedule = store.getSchedule().events
-                nowSecondOfDay = currentSecondOfDay()
-            }
+            nowSecondOfDay = currentSecondOfDay()
             delay(1000L)
         }
     }
@@ -102,6 +101,7 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
                 CircularProgressIndicator(
                     progress = { progressAnim.value },
                     modifier = Modifier.fillMaxSize(),
+                    strokeWidth = 10.dp,
                     startAngle = 120f,
                     endAngle = 60f,
                     colors = ProgressIndicatorDefaults.colors(
