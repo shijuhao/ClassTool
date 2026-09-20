@@ -9,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -87,13 +89,9 @@ fun ScheduleFullScreen() {
         label = "finalMinute"
     )
 
-    val baseDisplaySize = MaterialTheme.typography.displayMedium.fontSize.value
-    val baseTitleSize = MaterialTheme.typography.titleLarge.fontSize.value
-    val baseMediumSize = MaterialTheme.typography.titleMedium.fontSize.value
-
-    val displaySize = baseDisplaySize * (1f - 0.4f * finalMinuteProgress)
-    val titleSize = baseTitleSize * (1f - 0.4f * finalMinuteProgress)
-    val mediumSize = baseMediumSize * (1f + 2f * finalMinuteProgress)
+    val displaySize = 40f * (1f - 0.4f * finalMinuteProgress)
+    val titleSize = 20f * (1f - 0.4f * finalMinuteProgress)
+    val mediumSize = 14f * (1f + 2f * finalMinuteProgress)
 
     val remainingText = if (remainingSec != null) {
         if (remainingSec > 0) {
@@ -143,8 +141,10 @@ fun ScheduleFullScreen() {
                                 ScheduleEventType.ACTIVITY -> "活动"
                                 ScheduleEventType.CLASS -> "未命名"
                             },
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontSize = displaySize.sp
+                        style = TextStyle(
+                            fontSize = displaySize.sp,
+                            lineHeight = (displaySize * 1.2f).sp,
+                            fontWeight = FontWeight.Normal
                         ),
                         textAlign = TextAlign.Center,
                         maxLines = 1,
@@ -160,8 +160,9 @@ fun ScheduleFullScreen() {
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "${currentEvent.startTime} - ${currentEvent.endTime}",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = titleSize.sp
+                        style = TextStyle(
+                            fontSize = titleSize.sp,
+                            lineHeight = (titleSize * 1.2f).sp
                         ),
                         textAlign = TextAlign.Center
                     )
@@ -169,8 +170,9 @@ fun ScheduleFullScreen() {
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = remainingText,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontSize = mediumSize.sp
+                            style = TextStyle(
+                                fontSize = mediumSize.sp,
+                                lineHeight = (mediumSize * 1.2f).sp
                             ),
                             textAlign = TextAlign.Center,
                             color = eventColor
