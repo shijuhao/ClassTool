@@ -25,6 +25,8 @@ import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
 
 import com.juhao.classtool.key.*
 import com.juhao.classtool.datastore.ScheduleDataStore
+import com.juhao.classtool.datastore.SettingsDataStore
+import com.juhao.classtool.datastore.TestModeState
 import com.juhao.classtool.ui.about.AboutScreen
 import com.juhao.classtool.ui.game.coin.CoinScreen
 import com.juhao.classtool.ui.game.gamemenu.GameMenu
@@ -49,26 +51,32 @@ fun WearApp() {
     val backStack = rememberNavBackStack(MenuScreen)
 
     val context = LocalContext.current
-    
-    val testMode = TestModeState.enabled
-    val scheduleStore = remember(testMode) { SettingsDataStore(context) }
-    
+
+    var testModeLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        TestModeState.enabled = SettingsDataStore(context).getTestMode()
+        testModeLoaded = true
+    }
+
     val pagerState = rememberPagerState(
         initialPage = 0,
         pageCount = { 2 }
     )
 
-    LaunchedEffect(Unit) {
-        val events = scheduleStore.getSchedule().events
-        val today = todayWeekday()
-        val nowMinutes = currentMinutes()
-        val hasCurrent = events.any { event ->
-            event.weekday == today &&
-                toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-                toMinutes(event.endTime)?.let { nowMinutes < it } == true
-        }
-        if (hasCurrent) {
-            pagerState.animateScrollToPage(1)
+    if (testModeLoaded) {
+        val scheduleStore = remember(TestModeState.enabled) { ScheduleDataStore(context) }
+        LaunchedEffect(scheduleStore) {
+            val events = scheduleStore.getSchedule().events
+            val today = todayWeekday()
+            val nowMinutes = currentMinutes()
+            val hasCurrent = events.any { event ->
+                event.weekday == today &&
+                    toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+                    toMinutes(event.endTime)?.let { nowMinutes < it } == true
+            }
+            if (hasCurrent) {
+                pagerState.animateScrollToPage(1)
+            }
         }
     }
 
@@ -218,7 +226,7 @@ fun MainScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
-            
+
             item {
                 FilledTonalButton(
                     onClick = { onChangePage(SettingsNavScreen) },
@@ -234,7 +242,7 @@ fun MainScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
-            
+
             item {
                 FilledTonalButton(
                     onClick = { onChangePage(AboutNavScreen) },
