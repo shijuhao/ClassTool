@@ -47,6 +47,7 @@ data class Schedule(
 )
 
 val Context.scheduleDataStore: DataStore<Preferences> by preferencesDataStore(name = "schedule")
+val Context.scheduleDataStoreTest: DataStore<Preferences> by preferencesDataStore(name = "schedule_test")
 
 class ScheduleDataStore(private val context: Context) {
 
@@ -57,14 +58,21 @@ class ScheduleDataStore(private val context: Context) {
 
     private val scheduleKey = stringPreferencesKey("schedule")
 
-    val scheduleFlow: Flow<Schedule> = context.scheduleDataStore.data.map { preferences ->
+    private val dataStore: DataStore<Preferences>
+        get() = if (TestModeState.enabled) {
+            context.scheduleDataStoreTest
+        } else {
+            context.scheduleDataStore
+        }
+
+    val scheduleFlow: Flow<Schedule> = dataStore.data.map { preferences ->
         val raw = preferences[scheduleKey] ?: return@map Schedule()
         runCatching { json.decodeFromString<Schedule>(raw) }.getOrElse { Schedule() }
     }
 
     suspend fun getSchedule(): Schedule {
         var result = Schedule()
-        context.scheduleDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val raw = preferences[scheduleKey]
             if (raw != null) {
                 result = runCatching { json.decodeFromString<Schedule>(raw) }.getOrElse { Schedule() }
@@ -84,13 +92,13 @@ class ScheduleDataStore(private val context: Context) {
     }
 
     suspend fun setSchedule(schedule: Schedule) {
-        context.scheduleDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[scheduleKey] = json.encodeToString(schedule)
         }
     }
 
     suspend fun addEvent(event: ScheduleEvent) {
-        context.scheduleDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val current = preferences[scheduleKey]
                 ?.let { runCatching { json.decodeFromString<Schedule>(it) }.getOrNull() }
                 ?: Schedule()
@@ -100,7 +108,7 @@ class ScheduleDataStore(private val context: Context) {
     }
 
     suspend fun updateEvent(event: ScheduleEvent) {
-        context.scheduleDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val current = preferences[scheduleKey]
                 ?.let { runCatching { json.decodeFromString<Schedule>(it) }.getOrNull() }
                 ?: Schedule()
@@ -112,7 +120,7 @@ class ScheduleDataStore(private val context: Context) {
     }
 
     suspend fun removeEvent(id: String) {
-        context.scheduleDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val current = preferences[scheduleKey]
                 ?.let { runCatching { json.decodeFromString<Schedule>(it) }.getOrNull() }
                 ?: Schedule()
@@ -127,7 +135,7 @@ class ScheduleDataStore(private val context: Context) {
         color: String? = null
     ) {
         require(name.isNotBlank()) { "name must not be blank" }
-        context.scheduleDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val current = preferences[scheduleKey]
                 ?.let { runCatching { json.decodeFromString<Schedule>(it) }.getOrNull() }
                 ?: Schedule()
@@ -149,7 +157,7 @@ class ScheduleDataStore(private val context: Context) {
     }
 
     suspend fun clearCourse(id: String) {
-        context.scheduleDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val current = preferences[scheduleKey]
                 ?.let { runCatching { json.decodeFromString<Schedule>(it) }.getOrNull() }
                 ?: Schedule()
@@ -167,7 +175,7 @@ class ScheduleDataStore(private val context: Context) {
     }
 
     suspend fun clear() {
-        context.scheduleDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences.remove(scheduleKey)
         }
     }

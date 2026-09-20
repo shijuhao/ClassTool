@@ -49,8 +49,10 @@ fun WearApp() {
     val backStack = rememberNavBackStack(MenuScreen)
 
     val context = LocalContext.current
-    val scheduleStore = remember { ScheduleDataStore(context) }
-
+    
+    val testMode = TestModeState.enabled
+    val scheduleStore = remember(testMode) { SettingsDataStore(context) }
+    
     val pagerState = rememberPagerState(
         initialPage = 0,
         pageCount = { 2 }

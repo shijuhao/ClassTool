@@ -12,34 +12,56 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+val Context.settingsDataStoreTest: DataStore<Preferences> by preferencesDataStore(name = "settings_test")
 
 class SettingsDataStore(private val context: Context) {
 
+    private val testModeKey = booleanPreferencesKey("test_mode")
     private val classDurationKey = intPreferencesKey("class_duration_minutes")
     private val breakDurationKey = intPreferencesKey("break_duration_minutes")
 
-    val classDurationFlow: Flow<Int> = context.settingsDataStore.data.map { preferences ->
+    private val dataStore: DataStore<Preferences>
+        get() = if (TestModeState.enabled) {
+            context.settingsDataStoreTest
+        } else {
+            context.settingsDataStore
+        }
+
+    val testModeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
+        preferences[testModeKey] ?: false
+    }
+
+    suspend fun getTestMode(): Boolean =
+        context.settingsDataStore.data.map { it[testModeKey] ?: false }.first()
+
+    suspend fun setTestMode(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[testModeKey] = enabled
+        }
+    }
+
+    val classDurationFlow: Flow<Int> = dataStore.data.map { preferences ->
         preferences[classDurationKey] ?: 40
     }
 
-    val breakDurationFlow: Flow<Int> = context.settingsDataStore.data.map { preferences ->
+    val breakDurationFlow: Flow<Int> = dataStore.data.map { preferences ->
         preferences[breakDurationKey] ?: 10
     }
 
     suspend fun getClassDuration(): Int =
-        context.settingsDataStore.data.map { it[classDurationKey] ?: 40 }.first()
+        dataStore.data.map { it[classDurationKey] ?: 40 }.first()
 
     suspend fun setClassDuration(minutes: Int) {
-        context.settingsDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[classDurationKey] = minutes
         }
     }
 
     suspend fun getBreakDuration(): Int =
-        context.settingsDataStore.data.map { it[breakDurationKey] ?: 10 }.first()
+        dataStore.data.map { it[breakDurationKey] ?: 10 }.first()
 
     suspend fun setBreakDuration(minutes: Int) {
-        context.settingsDataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[breakDurationKey] = minutes
         }
     }

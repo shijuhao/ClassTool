@@ -3,10 +3,10 @@ package com.juhao.classtool.ui.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
@@ -14,6 +14,7 @@ import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.juhao.classtool.R
 import com.juhao.classtool.datastore.SettingsDataStore
+import com.juhao.classtool.datastore.TestModeState
 import kotlinx.coroutines.launch
 
 @Composable
@@ -25,6 +26,7 @@ fun SettingsScreen() {
     val listState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
 
+    val testMode by store.testModeFlow.collectAsState(initial = false)
     val classDuration by store.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by store.breakDurationFlow.collectAsState(initial = 10)
 
@@ -61,7 +63,7 @@ fun SettingsScreen() {
                     }
                 )
             }
-            
+
             item {
                 DurationSettingCard(
                     modifier = Modifier.transformedHeight(this, transformationSpec),
@@ -73,6 +75,40 @@ fun SettingsScreen() {
                     onChange = { v ->
                         scope.launch { store.setBreakDuration(v) }
                     }
+                )
+            }
+            
+            item {
+                SwitchButton(
+                    checked = testMode,
+                    onCheckedChange = { checked ->
+                        TestModeState.enabled = checked
+                        scope.launch {
+                            store.setTestMode(checked)
+                        }
+                    },
+                    label = {
+                        Text(
+                            text = "测试模式",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    secondaryLabel = {
+                        Text(
+                            text = if (testMode) "使用测试数据" else "使用正式数据",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
                 )
             }
         }
