@@ -1,7 +1,6 @@
 package com.juhao.classtool.ui.schedule
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -62,22 +61,12 @@ fun ScheduleFullScreen() {
         val ev = currentEvent
         if (ev == null) {
             progressAnim.snapTo(0f)
-        } else {
-            val startSec = toMinutes(ev.startTime)?.times(60)
-            val endSec = toMinutes(ev.endTime)?.times(60)
-            val p = if (startSec != null && endSec != null && endSec > startSec) {
-                ((currentSecondOfDay() - startSec).toFloat() / (endSec - startSec).toFloat())
-                    .coerceIn(0f, 1f)
-            } else {
-                0f
-            }
-            progressAnim.snapTo(p)
         }
     }
 
     LaunchedEffect(targetProgress) {
         if (currentEvent != null) {
-            progressAnim.animateTo(targetProgress, tween(1000))
+            progressAnim.snapTo(targetProgress)
         }
     }
 

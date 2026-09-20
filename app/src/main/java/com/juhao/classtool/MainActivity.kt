@@ -59,7 +59,7 @@ fun WearApp() {
         pageCount = { 4 }
     )
 
-    var initialJumpDone by remember { mutableStateOf(false) }
+    var initialJumpDone = false
     LaunchedEffect(schedule) {
         if (!initialJumpDone && schedule.isNotEmpty()) {
             initialJumpDone = true
