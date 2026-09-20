@@ -50,29 +50,23 @@ fun WearApp() {
 
     val context = LocalContext.current
     val scheduleStore = remember { ScheduleDataStore(context) }
-    val schedule by produceState(initialValue = emptyList()) {
-        value = scheduleStore.getSchedule().events
-    }
 
     val pagerState = rememberPagerState(
         initialPage = 0,
         pageCount = { 4 }
     )
 
-    var initialJumpDone = false
-    LaunchedEffect(schedule) {
-        if (!initialJumpDone && schedule.isNotEmpty()) {
-            initialJumpDone = true
-            val today = todayWeekday()
-            val nowMinutes = currentMinutes()
-            val hasCurrent = schedule.any { event ->
-                event.weekday == today &&
-                    toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-                    toMinutes(event.endTime)?.let { nowMinutes < it } == true
-            }
-            if (hasCurrent) {
-                pagerState.animateScrollToPage(1)
-            }
+    LaunchedEffect(Unit) {
+        val events = scheduleStore.getSchedule().events
+        val today = todayWeekday()
+        val nowMinutes = currentMinutes()
+        val hasCurrent = events.any { event ->
+            event.weekday == today &&
+                toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+                toMinutes(event.endTime)?.let { nowMinutes < it } == true
+        }
+        if (hasCurrent) {
+            pagerState.animateScrollToPage(1)
         }
     }
 
@@ -85,18 +79,15 @@ fun WearApp() {
                         onChangePage = { backStack.add(it) }
                     )
                 }
-
                 entry<EditScheduleNavScreen> {
                     EditScheduleScreen()
                 }
-
                 entry<ToolMenuNavScreen> {
                     ToolMenu(onChangePage = { backStack.add(it) })
                 }
                 entry<TimerNavScreen> {
                     TimerScreen()
                 }
-
                 entry<GameMenuNavScreen> {
                     GameMenu(onChangePage = { backStack.add(it) })
                 }
