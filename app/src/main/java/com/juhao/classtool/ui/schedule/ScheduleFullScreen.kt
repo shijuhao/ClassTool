@@ -81,22 +81,22 @@ fun ScheduleFullScreen() {
         null
     }
 
-    val isFinalMinute = remainingSec != null && remainingSec in 1..60
+    val isFinalPart = remainingSec != null && remainingSec in 1..180
 
-    val finalMinuteProgress by animateFloatAsState(
-        targetValue = if (isFinalMinute) 1f else 0f,
+    val finalPartProgress by animateFloatAsState(
+        targetValue = if (isFinalPart) 1f else 0f,
         animationSpec = tween(400),
-        label = "finalMinute"
+        label = "finalPart"
     )
 
-    val displaySize = 32f * (1f - 0.4f * finalMinuteProgress)
-    val titleSize = 20f * (1f - 0.4f * finalMinuteProgress)
-    val mediumSize = 16f * (1f + 2f * finalMinuteProgress)
+    val displaySize = 32f * (1f - 0.4f * finalPartProgress)
+    val titleSize = 20f * (1f - 0.4f * finalPartProgress)
+    val mediumSize = 16f * (1f + 1.5f * finalPartProgress)
 
     val remainingText = if (remainingSec != null) {
         if (remainingSec > 0) {
-            if (isFinalMinute) {
-                "%d".format(remainingSec)
+            if (isFinalPart) {
+                "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
             } else {
                 "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
             }
