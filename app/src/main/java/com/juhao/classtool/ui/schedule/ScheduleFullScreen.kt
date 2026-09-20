@@ -91,7 +91,7 @@ fun ScheduleFullScreen() {
 
     val displaySize = 32f * (1f - 0.4f * finalMinuteProgress)
     val titleSize = 20f * (1f - 0.4f * finalMinuteProgress)
-    val mediumSize = 14f * (1f + 2f * finalMinuteProgress)
+    val mediumSize = 16f * (1f + 2f * finalMinuteProgress)
 
     val remainingText = if (remainingSec != null) {
         if (remainingSec > 0) {
