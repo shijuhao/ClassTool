@@ -661,6 +661,8 @@ private fun EventEditDialog(
                             Icon(
                                 painter = painterResource(R.drawable.edit),
                                 contentDescription = null,
+                                tint = if (isCustom) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(Modifier.width(4.dp))
