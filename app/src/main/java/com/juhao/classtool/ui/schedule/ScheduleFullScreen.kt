@@ -26,10 +26,12 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
     var nowSecondOfDay by remember { mutableIntStateOf(currentSecondOfDay()) }
 
     LaunchedEffect(Unit) {
-        while (isActive) {
-            schedule = store.getSchedule().events
-            nowSecondOfDay = currentSecondOfDay()
-            delay(1000L)
+        while (true) {
+            if (isActive) {
+                schedule = store.getSchedule().events
+                nowSecondOfDay = currentSecondOfDay()
+                delay(1000L)
+            }
         }
     }
 
