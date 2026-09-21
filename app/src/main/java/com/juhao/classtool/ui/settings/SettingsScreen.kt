@@ -28,6 +28,7 @@ fun SettingsScreen() {
 
     val testMode by store.testModeFlow.collectAsState(initial = false)
     val prepBell by store.prepBellFlow.collectAsState(initial = true)
+    val globalEventReminder by store.globalEventReminderFlow.collectAsState(initial = true)
     val classDuration by store.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by store.breakDurationFlow.collectAsState(initial = 10)
 
@@ -66,6 +67,37 @@ fun SettingsScreen() {
                     secondaryLabel = {
                         Text(
                             text = if (prepBell) "上课前 3 分钟显示预备" else "关闭",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.access_time),
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+
+            item {
+                SwitchButton(
+                    checked = globalEventReminder,
+                    onCheckedChange = { checked ->
+                        scope.launch { store.setGlobalEventReminder(checked) }
+                    },
+                    label = {
+                        Text(
+                            text = "全局事件提醒",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    secondaryLabel = {
+                        Text(
+                            text = if (globalEventReminder) "事件开始时弹出提示" else "关闭",
                             modifier = Modifier.fillMaxWidth()
                         )
                     },

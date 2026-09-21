@@ -20,6 +20,7 @@ class SettingsDataStore(private val context: Context) {
     private val classDurationKey = intPreferencesKey("class_duration_minutes")
     private val breakDurationKey = intPreferencesKey("break_duration_minutes")
     private val prepBellKey = booleanPreferencesKey("prep_bell")
+    private val globalEventReminderKey = booleanPreferencesKey("global_event_reminder")
 
     private val dataStore: DataStore<Preferences>
         get() = if (TestModeState.enabled) {
@@ -51,6 +52,19 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setPrepBell(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[prepBellKey] = enabled
+        }
+    }
+
+    val globalEventReminderFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[globalEventReminderKey] ?: true
+    }
+
+    suspend fun getGlobalEventReminder(): Boolean =
+        dataStore.data.map { it[globalEventReminderKey] ?: true }.first()
+
+    suspend fun setGlobalEventReminder(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[globalEventReminderKey] = enabled
         }
     }
 

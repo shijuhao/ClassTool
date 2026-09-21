@@ -115,16 +115,19 @@ fun WearApp() {
                         val today = todayWeekday()
                         val events = scheduleStore.getSchedule().events
                         val prepEnabled = settingsStore.getPrepBell()
+                        val globalReminderEnabled = settingsStore.getGlobalEventReminder()
 
-                        events.firstOrNull {
-                            it.weekday == today && toMinutes(it.startTime) == nowMinutes
-                        }?.let { event ->
-                            val name = event.courseName ?: when (event.type) {
-                                ScheduleEventType.BREAK -> "课间休息"
-                                ScheduleEventType.ACTIVITY -> "活动"
-                                ScheduleEventType.CLASS -> "未命名"
+                        if (globalReminderEnabled) {
+                            events.firstOrNull {
+                                it.weekday == today && toMinutes(it.startTime) == nowMinutes
+                            }?.let { event ->
+                                val name = event.courseName ?: when (event.type) {
+                                    ScheduleEventType.BREAK -> "课间休息"
+                                    ScheduleEventType.ACTIVITY -> "活动"
+                                    ScheduleEventType.CLASS -> "未命名"
+                                }
+                                showMessage("$name 开始了")
                             }
-                            showMessage("$name 开始了")
                         }
 
                         if (prepEnabled) {
@@ -134,7 +137,7 @@ fun WearApp() {
                                     toMinutes(it.startTime)?.minus(3) == nowMinutes
                             }?.let { event ->
                                 val name = event.courseName ?: "下一节课"
-                                showMessage("$name 预备铃")
+                                showMessage("$name 即将开始")
                             }
                         }
                     }
@@ -192,14 +195,13 @@ fun WearApp() {
         }
 
         confirmationMessage?.let { message ->
-            val textStyle = ConfirmationDialogDefaults.curvedTextStyle
             ConfirmationDialog(
                 visible = true,
                 onDismissRequest = { confirmationMessage = null },
                 curvedText = {
                     confirmationDialogCurvedText(
                         message,
-                        textStyle
+                        ConfirmationDialogDefaults.curvedTextStyle
                     )
                 }
             ) {
