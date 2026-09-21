@@ -213,8 +213,3 @@ fun ScheduleFullScreen() {
         }
     }
 }
-
-private fun currentSecondOfDay(): Int {
-    val now = LocalTime.now()
-    return now.hour * 3600 + now.minute * 60 + now.second
-}

@@ -24,6 +24,7 @@ import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
 
 import com.juhao.classtool.key.*
+import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.SettingsDataStore
 import com.juhao.classtool.datastore.TestModeState

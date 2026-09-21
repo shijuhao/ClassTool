@@ -33,6 +33,11 @@ fun currentMinutes(): Int {
     return now.hour * 60 + now.minute
 }
 
+fun currentSecondOfDay(): Int {
+    val now = LocalTime.now()
+    return now.hour * 3600 + now.minute * 60 + now.second
+}
+
 fun todayWeekday(): Weekday = when (LocalDate.now().dayOfWeek.value) {
     1 -> Weekday.MONDAY
     2 -> Weekday.TUESDAY
