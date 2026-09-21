@@ -109,7 +109,7 @@ fun WearApp() {
                     scope.launch {
                         val onHomeSecondPage =
                             backStack.lastOrNull() is MenuScreen && pagerState.currentPage == 1
-                        if (onHomeSecondPage) return@launch
+                        if (!globalReminderEnabled || onHomeSecondPage) return@launch
 
                         val nowMinutes = currentSecondOfDay() / 60
                         val today = todayWeekday()
@@ -117,17 +117,15 @@ fun WearApp() {
                         val prepEnabled = settingsStore.getPrepBell()
                         val globalReminderEnabled = settingsStore.getGlobalEventReminder()
 
-                        if (globalReminderEnabled) {
-                            events.firstOrNull {
-                                it.weekday == today && toMinutes(it.startTime) == nowMinutes
-                            }?.let { event ->
-                                val name = event.courseName ?: when (event.type) {
-                                    ScheduleEventType.BREAK -> "课间休息"
-                                    ScheduleEventType.ACTIVITY -> "活动"
-                                    ScheduleEventType.CLASS -> "未命名"
-                                }
-                                showMessage("$name 开始了")
+                        events.firstOrNull {
+                            it.weekday == today && toMinutes(it.startTime) == nowMinutes
+                        }?.let { event ->
+                            val name = event.courseName ?: when (event.type) {
+                                ScheduleEventType.BREAK -> "课间休息"
+                                ScheduleEventType.ACTIVITY -> "活动"
+                                ScheduleEventType.CLASS -> "未命名"
                             }
+                            showMessage("$name 开始了")
                         }
 
                         if (prepEnabled) {
