@@ -19,6 +19,7 @@ class SettingsDataStore(private val context: Context) {
     private val testModeKey = booleanPreferencesKey("test_mode")
     private val classDurationKey = intPreferencesKey("class_duration_minutes")
     private val breakDurationKey = intPreferencesKey("break_duration_minutes")
+    private val prepBellKey = booleanPreferencesKey("prep_bell")
 
     private val dataStore: DataStore<Preferences>
         get() = if (TestModeState.enabled) {
@@ -37,6 +38,19 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setTestMode(enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[testModeKey] = enabled
+        }
+    }
+
+    val prepBellFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[prepBellKey] ?: true
+    }
+
+    suspend fun getPrepBell(): Boolean =
+        dataStore.data.map { it[prepBellKey] ?: true }.first()
+
+    suspend fun setPrepBell(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[prepBellKey] = enabled
         }
     }
 

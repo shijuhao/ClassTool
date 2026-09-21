@@ -27,6 +27,7 @@ fun SettingsScreen() {
     val transformationSpec = rememberTransformationSpec()
 
     val testMode by store.testModeFlow.collectAsState(initial = false)
+    val prepBell by store.prepBellFlow.collectAsState(initial = true)
     val classDuration by store.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by store.breakDurationFlow.collectAsState(initial = 10)
 
@@ -48,6 +49,37 @@ fun SettingsScreen() {
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
                 ) { Text(text = "设置") }
+            }
+
+            item {
+                SwitchButton(
+                    checked = prepBell,
+                    onCheckedChange = { checked ->
+                        scope.launch { store.setPrepBell(checked) }
+                    },
+                    label = {
+                        Text(
+                            text = "3 分钟预备铃",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    secondaryLabel = {
+                        Text(
+                            text = if (prepBell) "上课前 3 分钟显示预备" else "关闭",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.info),
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
             }
 
             item {
@@ -77,7 +109,7 @@ fun SettingsScreen() {
                     }
                 )
             }
-            
+
             item {
                 SwitchButton(
                     checked = testMode,

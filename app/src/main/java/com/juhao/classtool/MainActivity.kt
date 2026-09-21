@@ -65,16 +65,25 @@ fun WearApp() {
 
     if (testModeLoaded) {
         val scheduleStore = remember(TestModeState.enabled) { ScheduleDataStore(context) }
-        LaunchedEffect(scheduleStore) {
+        val settingsStore = remember(TestModeState.enabled) { SettingsDataStore(context) }
+        LaunchedEffect(scheduleStore, settingsStore) {
             val events = scheduleStore.getSchedule().events
+            val prepBellEnabled = settingsStore.getPrepBell()
             val today = todayWeekday()
-            val nowMinutes = currentMinutes()
+            val nowSec = currentSecondOfDay()
+            val nowMinutes = nowSec / 60
             val hasCurrent = events.any { event ->
                 event.weekday == today &&
                     toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
                     toMinutes(event.endTime)?.let { nowMinutes < it } == true
             }
-            if (hasCurrent) {
+            val inPrep = prepBellEnabled && events.any { event ->
+                if (event.weekday != today) return@any false
+                if (event.type == ScheduleEventType.BREAK) return@any false
+                val startSec = toMinutes(event.startTime)?.times(60) ?: return@any false
+                nowSec in (startSec - 180) until startSec
+            }
+            if (hasCurrent || inPrep) {
                 pagerState.animateScrollToPage(1)
             }
         }

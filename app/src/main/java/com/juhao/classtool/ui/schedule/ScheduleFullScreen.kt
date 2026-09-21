@@ -19,19 +19,25 @@ import androidx.wear.compose.material3.*
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
+import com.juhao.classtool.datastore.SettingsDataStore
 import kotlinx.coroutines.delay
 import java.time.LocalTime
+
+private const val PREP_BELL_SECONDS = 180
 
 @Composable
 fun ScheduleFullScreen() {
     val context = LocalContext.current
     val store = remember { ScheduleDataStore(context) }
+    val settingsStore = remember { SettingsDataStore(context) }
 
     var schedule by remember { mutableStateOf(emptyList<ScheduleEvent>()) }
+    var prepBellEnabled by remember { mutableStateOf(true) }
     var nowSecondOfDay by remember { mutableIntStateOf(currentSecondOfDay()) }
 
     LaunchedEffect(Unit) {
         schedule = store.getSchedule().events
+        prepBellEnabled = settingsStore.getPrepBell()
         while (true) {
             nowSecondOfDay = currentSecondOfDay()
             delay(1000L)
@@ -49,14 +55,35 @@ fun ScheduleFullScreen() {
         }
     }
 
-    val startSec = remember(currentEvent?.id) {
-        currentEvent?.let { toMinutes(it.startTime)?.times(60) }
-    }
-    val endSec = remember(currentEvent?.id) {
-        currentEvent?.let { toMinutes(it.endTime)?.times(60) }
+    val prepEvent = remember(schedule, today, nowSecondOfDay, prepBellEnabled) {
+        if (!prepBellEnabled) return@remember null
+        schedule.firstOrNull { event ->
+            if (event.weekday != today) return@firstOrNull false
+            if (event.type == ScheduleEventType.BREAK) return@firstOrNull false
+            val startSec = toMinutes(event.startTime)?.times(60) ?: return@firstOrNull false
+            nowSecondOfDay in (startSec - PREP_BELL_SECONDS) until startSec
+        }
     }
 
-    val targetProgress = if (startSec != null && endSec != null && endSec > startSec) {
+    val isPrep = currentEvent == null && prepEvent != null
+    val displayEvent = currentEvent ?: prepEvent
+
+    val startSec = remember(displayEvent?.id, isPrep) {
+        displayEvent?.let { toMinutes(it.startTime)?.times(60) }
+    }
+    val endSec = remember(displayEvent?.id, isPrep) {
+        displayEvent?.let { toMinutes(it.endTime)?.times(60) }
+    }
+
+    val targetProgress = if (isPrep) {
+        val prepStartSec = startSec?.minus(PREP_BELL_SECONDS)
+        if (prepStartSec != null && startSec != null && startSec > prepStartSec) {
+            ((nowSecondOfDay - prepStartSec).toFloat() / (startSec - prepStartSec).toFloat())
+                .coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+    } else if (startSec != null && endSec != null && endSec > startSec) {
         ((nowSecondOfDay - startSec).toFloat() / (endSec - startSec).toFloat())
             .coerceIn(0f, 1f)
     } else {
@@ -65,20 +92,25 @@ fun ScheduleFullScreen() {
 
     val progressAnim = remember { Animatable(0f) }
 
-    LaunchedEffect(currentEvent?.id) {
-        if (currentEvent == null) {
+    LaunchedEffect(displayEvent?.id, isPrep) {
+        if (displayEvent == null) {
             progressAnim.snapTo(0f)
         }
     }
 
     LaunchedEffect(targetProgress) {
-        if (currentEvent != null) {
+        if (displayEvent != null) {
             progressAnim.snapTo(targetProgress)
         }
     }
 
-    val remainingSec = if (endSec != null) endSec - nowSecondOfDay else null
-    val isFinalPart = remainingSec != null && remainingSec in 1..180
+    val remainingSec = if (isPrep) {
+        startSec?.minus(nowSecondOfDay)
+    } else {
+        endSec?.minus(nowSecondOfDay)
+    }
+
+    val isFinalPart = remainingSec != null && remainingSec in 1..PREP_BELL_SECONDS
 
     val finalPartProgress by animateFloatAsState(
         targetValue = if (isFinalPart) 1f else 0f,
@@ -90,7 +122,7 @@ fun ScheduleFullScreen() {
     val titleSize = 20f * (1f - 0.2f * finalPartProgress)
     val mediumSize = 16f * (1f + 1.5f * finalPartProgress)
 
-    val eventColor = currentEvent?.courseColor?.let { parseColor(it) }
+    val eventColor = displayEvent?.courseColor?.let { parseColor(it) }
         ?: MaterialTheme.colorScheme.primary
 
     ScreenScaffold {
@@ -100,7 +132,7 @@ fun ScheduleFullScreen() {
                 .padding(CircularProgressIndicatorDefaults.FullScreenPadding),
             contentAlignment = Alignment.Center
         ) {
-            val ev = currentEvent
+            val ev = displayEvent
             if (ev != null) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -132,7 +164,7 @@ fun ScheduleFullScreen() {
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "${ev.startTime} - ${ev.endTime}",
+                        text = if (isPrep) "预备铃" else "${ev.startTime} - ${ev.endTime}",
                         style = TextStyle(
                             fontSize = titleSize.sp,
                             lineHeight = (titleSize * 1.2f).sp
