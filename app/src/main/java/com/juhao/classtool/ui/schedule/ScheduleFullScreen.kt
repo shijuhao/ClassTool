@@ -164,10 +164,10 @@ fun ScheduleFullScreen() {
                 CircularProgressIndicator(
                     progress = { progressAnim.value },
                     modifier = Modifier.fillMaxSize(),
-                    startAngle = 120f,
-                    endAngle = 60f,
+                    startAngle = 300f,
+                    endAngle = 240f,
                     colors = ProgressIndicatorDefaults.colors(
-                        trackColor = eventColor.copy(alpha = 0.2f),
+                        trackColor = eventColor.copy(alpha = 0.4f),
                         indicatorColor = eventColor,
                     )
                 )
