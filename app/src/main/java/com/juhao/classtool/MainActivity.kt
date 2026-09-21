@@ -58,7 +58,12 @@ fun WearApp() {
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
+
+    var confirmationMessage by remember { mutableStateOf<String?>(null) }
+
+    fun showMessage(text: String) {
+        confirmationMessage = text
+    }
 
     var testModeLoaded by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -102,6 +107,10 @@ fun WearApp() {
                 override fun onReceive(c: Context?, intent: Intent?) {
                     if (intent?.action != Intent.ACTION_TIME_TICK) return
                     scope.launch {
+                        val onHomeSecondPage =
+                            backStack.lastOrNull() is MenuScreen && pagerState.currentPage == 1
+                        if (onHomeSecondPage) return@launch
+
                         val nowMinutes = currentSecondOfDay() / 60
                         val today = todayWeekday()
                         val events = scheduleStore.getSchedule().events
@@ -115,10 +124,7 @@ fun WearApp() {
                                 ScheduleEventType.ACTIVITY -> "活动"
                                 ScheduleEventType.CLASS -> "未命名"
                             }
-                            snackbarHostState.showSnackbar(
-                                message = "$name 开始了",
-                                duration = SnackbarDuration.Short
-                            )
+                            showMessage("$name 开始了")
                         }
 
                         if (prepEnabled) {
@@ -128,10 +134,7 @@ fun WearApp() {
                                     toMinutes(it.startTime)?.minus(3) == nowMinutes
                             }?.let { event ->
                                 val name = event.courseName ?: "下一节课"
-                                snackbarHostState.showSnackbar(
-                                    message = "$name 预备铃",
-                                    duration = SnackbarDuration.Short
-                                )
+                                showMessage("$name 预备铃")
                             }
                         }
                     }
@@ -178,9 +181,7 @@ fun WearApp() {
         }
 
     WearAppTheme {
-        AppScaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) }
-        ) {
+        AppScaffold {
             val swipeDismissableSceneStrategy = rememberSwipeDismissableSceneStrategy<NavKey>()
 
             NavDisplay(
@@ -188,6 +189,25 @@ fun WearApp() {
                 entryProvider = entryProvider,
                 sceneStrategies = listOf(swipeDismissableSceneStrategy)
             )
+        }
+
+        confirmationMessage?.let { message ->
+            ConfirmationDialog(
+                visible = true,
+                onDismissRequest = { confirmationMessage = null },
+                curvedText = {
+                    confirmationDialogCurvedText(
+                        message,
+                        ConfirmationDialogDefaults.curvedTextStyle
+                    )
+                }
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.info),
+                    contentDescription = null,
+                    modifier = Modifier.size(ConfirmationDialogDefaults.SmallIconSize)
+                )
+            }
         }
     }
 }
