@@ -65,8 +65,8 @@ fun ScheduleFullScreen() {
         }
     }
 
-    val isPrep = currentEvent == null && prepEvent != null
-    val displayEvent = currentEvent ?: prepEvent
+    val isPrep = prepEvent != null
+    val displayEvent = prepEvent ?: currentEvent
 
     val startSec = remember(displayEvent?.id, isPrep) {
         displayEvent?.let { toMinutes(it.startTime)?.times(60) }
