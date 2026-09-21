@@ -1,5 +1,9 @@
 package com.juhao.classtool
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,6 +40,7 @@ import com.juhao.classtool.ui.settings.SettingsScreen
 import com.juhao.classtool.theme.WearAppTheme
 import com.juhao.classtool.ui.tool.timer.TimerScreen
 import com.juhao.classtool.ui.tool.toolmenu.ToolMenu
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +57,8 @@ fun WearApp() {
     val backStack = rememberNavBackStack(MenuScreen)
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var testModeLoaded by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -67,6 +74,7 @@ fun WearApp() {
     if (testModeLoaded) {
         val scheduleStore = remember(TestModeState.enabled) { ScheduleDataStore(context) }
         val settingsStore = remember(TestModeState.enabled) { SettingsDataStore(context) }
+
         LaunchedEffect(scheduleStore, settingsStore) {
             val events = scheduleStore.getSchedule().events
             val prepBellEnabled = settingsStore.getPrepBell()
@@ -86,6 +94,52 @@ fun WearApp() {
             }
             if (hasCurrent || inPrep) {
                 pagerState.animateScrollToPage(1)
+            }
+        }
+
+        DisposableEffect(scheduleStore, settingsStore) {
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(c: Context?, intent: Intent?) {
+                    if (intent?.action != Intent.ACTION_TIME_TICK) return
+                    scope.launch {
+                        val nowMinutes = currentSecondOfDay() / 60
+                        val today = todayWeekday()
+                        val events = scheduleStore.getSchedule().events
+                        val prepEnabled = settingsStore.getPrepBell()
+
+                        events.firstOrNull {
+                            it.weekday == today && toMinutes(it.startTime) == nowMinutes
+                        }?.let { event ->
+                            val name = event.courseName ?: when (event.type) {
+                                ScheduleEventType.BREAK -> "课间休息"
+                                ScheduleEventType.ACTIVITY -> "活动"
+                                ScheduleEventType.CLASS -> "未命名"
+                            }
+                            snackbarHostState.showSnackbar(
+                                message = "$name 开始了",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+
+                        if (prepEnabled) {
+                            events.firstOrNull {
+                                it.weekday == today &&
+                                    it.type != ScheduleEventType.BREAK &&
+                                    toMinutes(it.startTime)?.minus(3) == nowMinutes
+                            }?.let { event ->
+                                val name = event.courseName ?: "下一节课"
+                                snackbarHostState.showSnackbar(
+                                    message = "$name 预备铃",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            context.registerReceiver(receiver, IntentFilter(Intent.ACTION_TIME_TICK))
+            onDispose {
+                context.unregisterReceiver(receiver)
             }
         }
     }
@@ -124,7 +178,9 @@ fun WearApp() {
         }
 
     WearAppTheme {
-        AppScaffold {
+        AppScaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) {
             val swipeDismissableSceneStrategy = rememberSwipeDismissableSceneStrategy<NavKey>()
 
             NavDisplay(
