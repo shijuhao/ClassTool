@@ -31,31 +31,34 @@ fun ScheduleFullScreen() {
     var nowSecondOfDay by remember { mutableIntStateOf(currentSecondOfDay()) }
 
     LaunchedEffect(Unit) {
+        schedule = store.getSchedule().events
         while (true) {
-            schedule = store.getSchedule().events
             nowSecondOfDay = currentSecondOfDay()
             delay(1000L)
         }
     }
 
-    val nowMinutes = nowSecondOfDay / 60
     val today = todayWeekday()
+    val nowMinutes = nowSecondOfDay / 60
 
-    val currentEvent = schedule.firstOrNull { event ->
-        event.weekday == today &&
-            toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-            toMinutes(event.endTime)?.let { nowMinutes < it } == true
+    val currentEvent = remember(schedule, today, nowMinutes) {
+        schedule.firstOrNull { event ->
+            event.weekday == today &&
+                toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+                toMinutes(event.endTime)?.let { nowMinutes < it } == true
+        }
     }
 
-    val targetProgress = if (currentEvent != null) {
-        val startSec = toMinutes(currentEvent.startTime)?.times(60)
-        val endSec = toMinutes(currentEvent.endTime)?.times(60)
-        if (startSec != null && endSec != null && endSec > startSec) {
-            ((nowSecondOfDay - startSec).toFloat() / (endSec - startSec).toFloat())
-                .coerceIn(0f, 1f)
-        } else {
-            0f
-        }
+    val startSec = remember(currentEvent?.id) {
+        currentEvent?.let { toMinutes(it.startTime)?.times(60) }
+    }
+    val endSec = remember(currentEvent?.id) {
+        currentEvent?.let { toMinutes(it.endTime)?.times(60) }
+    }
+
+    val targetProgress = if (startSec != null && endSec != null && endSec > startSec) {
+        ((nowSecondOfDay - startSec).toFloat() / (endSec - startSec).toFloat())
+            .coerceIn(0f, 1f)
     } else {
         0f
     }
@@ -63,8 +66,7 @@ fun ScheduleFullScreen() {
     val progressAnim = remember { Animatable(0f) }
 
     LaunchedEffect(currentEvent?.id) {
-        val ev = currentEvent
-        if (ev == null) {
+        if (currentEvent == null) {
             progressAnim.snapTo(0f)
         }
     }
@@ -75,12 +77,7 @@ fun ScheduleFullScreen() {
         }
     }
 
-    val remainingSec = if (currentEvent != null) {
-        toMinutes(currentEvent.endTime)?.let { it * 60 - nowSecondOfDay }
-    } else {
-        null
-    }
-
+    val remainingSec = if (endSec != null) endSec - nowSecondOfDay else null
     val isFinalPart = remainingSec != null && remainingSec in 1..180
 
     val finalPartProgress by animateFloatAsState(
@@ -90,25 +87,13 @@ fun ScheduleFullScreen() {
     )
 
     val displaySize = 32f * (1f - 0.4f * finalPartProgress)
-    val titleSize = 20f * (1f - 0.4f * finalPartProgress)
+    val titleSize = 20f * (1f - 0.2f * finalPartProgress)
     val mediumSize = 16f * (1f + 1.5f * finalPartProgress)
 
-    val remainingText = if (remainingSec != null) {
-        if (remainingSec > 0) {
-            if (isFinalPart) {
-                "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
-            } else {
-                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
-            }
-        } else {
-            "剩余 00:00"
-        }
-    } else {
-        null
+    val eventColor = remember(currentEvent?.id) {
+        currentEvent?.courseColor?.let { parseColor(it) }
+            ?: MaterialTheme.colorScheme.primary
     }
-
-    val eventColor = currentEvent?.courseColor?.let { parseColor(it) }
-        ?: MaterialTheme.colorScheme.primary
 
     ScreenScaffold {
         Box(
@@ -117,15 +102,16 @@ fun ScheduleFullScreen() {
                 .padding(12.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (currentEvent != null) {
+            val ev = currentEvent
+            if (ev != null) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = currentEvent.courseName
-                            ?: when (currentEvent.type) {
+                        text = ev.courseName
+                            ?: when (ev.type) {
                                 ScheduleEventType.BREAK -> "课间休息"
                                 ScheduleEventType.ACTIVITY -> "活动"
                                 ScheduleEventType.CLASS -> "未命名"
@@ -148,15 +134,24 @@ fun ScheduleFullScreen() {
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "${currentEvent.startTime} - ${currentEvent.endTime}",
+                        text = "${ev.startTime} - ${ev.endTime}",
                         style = TextStyle(
                             fontSize = titleSize.sp,
                             lineHeight = (titleSize * 1.2f).sp
                         ),
                         textAlign = TextAlign.Center
                     )
-                    if (remainingText != null) {
+                    if (remainingSec != null) {
                         Spacer(Modifier.height(2.dp))
+                        val remainingText = if (remainingSec > 0) {
+                            if (isFinalPart) {
+                                "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
+                            } else {
+                                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
+                            }
+                        } else {
+                            "剩余 00:00"
+                        }
                         Text(
                             text = remainingText,
                             style = TextStyle(
