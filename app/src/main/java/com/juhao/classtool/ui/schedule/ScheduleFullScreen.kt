@@ -97,7 +97,7 @@ fun ScheduleFullScreen() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
+                .padding(CircularProgressIndicatorDefaults.FullScreenPadding),
             contentAlignment = Alignment.Center
         ) {
             val ev = currentEvent
