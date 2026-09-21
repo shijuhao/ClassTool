@@ -164,7 +164,7 @@ fun ScheduleFullScreen() {
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = if (isPrep) "预备铃" else "${ev.startTime} - ${ev.endTime}",
+                        text = if (isPrep) "即将开始" else "${ev.startTime} - ${ev.endTime}",
                         style = TextStyle(
                             fontSize = titleSize.sp,
                             lineHeight = (titleSize * 1.2f).sp
