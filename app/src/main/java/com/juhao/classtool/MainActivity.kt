@@ -107,6 +107,7 @@ fun WearApp() {
                 override fun onReceive(c: Context?, intent: Intent?) {
                     if (intent?.action != Intent.ACTION_TIME_TICK) return
                     scope.launch {
+                        val globalReminderEnabled = settingsStore.getGlobalEventReminder()
                         val onHomeSecondPage =
                             backStack.lastOrNull() is MenuScreen && pagerState.currentPage == 1
                         if (!globalReminderEnabled || onHomeSecondPage) return@launch
@@ -115,7 +116,6 @@ fun WearApp() {
                         val today = todayWeekday()
                         val events = scheduleStore.getSchedule().events
                         val prepEnabled = settingsStore.getPrepBell()
-                        val globalReminderEnabled = settingsStore.getGlobalEventReminder()
 
                         events.firstOrNull {
                             it.weekday == today && toMinutes(it.startTime) == nowMinutes
