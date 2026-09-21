@@ -90,10 +90,8 @@ fun ScheduleFullScreen() {
     val titleSize = 20f * (1f - 0.2f * finalPartProgress)
     val mediumSize = 16f * (1f + 1.5f * finalPartProgress)
 
-    val eventColor = remember(currentEvent?.id) {
-        currentEvent?.courseColor?.let { parseColor(it) }
-            ?: MaterialTheme.colorScheme.primary
-    }
+    val eventColor = currentEvent?.courseColor?.let { parseColor(it) }
+        ?: MaterialTheme.colorScheme.primary
 
     ScreenScaffold {
         Box(
