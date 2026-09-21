@@ -195,13 +195,14 @@ fun WearApp() {
         }
 
         confirmationMessage?.let { message ->
+            val textStyle = ConfirmationDialogDefaults.curvedTextStyle
             ConfirmationDialog(
                 visible = true,
                 onDismissRequest = { confirmationMessage = null },
                 curvedText = {
                     confirmationDialogCurvedText(
                         message,
-                        ConfirmationDialogDefaults.curvedTextStyle
+                        textStyle
                     )
                 }
             ) {
