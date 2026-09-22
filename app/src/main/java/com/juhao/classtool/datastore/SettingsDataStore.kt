@@ -21,6 +21,7 @@ class SettingsDataStore(private val context: Context) {
     private val breakDurationKey = intPreferencesKey("break_duration_minutes")
     private val prepBellKey = booleanPreferencesKey("prep_bell")
     private val globalEventReminderKey = booleanPreferencesKey("global_event_reminder")
+    private val squareScreenModeKey = booleanPreferencesKey("square_screen_mode")
 
     private val dataStore: DataStore<Preferences>
         get() = if (TestModeState.enabled) {
@@ -65,6 +66,19 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setGlobalEventReminder(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[globalEventReminderKey] = enabled
+        }
+    }
+
+    val squareScreenModeFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[squareScreenModeKey] ?: false
+    }
+
+    suspend fun getSquareScreenMode(): Boolean =
+        dataStore.data.map { it[squareScreenModeKey] ?: false }.first()
+
+    suspend fun setSquareScreenMode(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[squareScreenModeKey] = enabled
         }
     }
 

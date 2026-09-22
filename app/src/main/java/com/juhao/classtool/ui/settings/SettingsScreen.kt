@@ -29,6 +29,7 @@ fun SettingsScreen() {
     val testMode by store.testModeFlow.collectAsState(initial = false)
     val prepBell by store.prepBellFlow.collectAsState(initial = true)
     val globalEventReminder by store.globalEventReminderFlow.collectAsState(initial = true)
+    val squareScreenMode by store.squareScreenModeFlow.collectAsState(initial = false)
     val classDuration by store.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by store.breakDurationFlow.collectAsState(initial = 10)
 
@@ -104,6 +105,37 @@ fun SettingsScreen() {
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.info),
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+
+            item {
+                SwitchButton(
+                    checked = squareScreenMode,
+                    onCheckedChange = { checked ->
+                        scope.launch { store.setSquareScreenMode(checked) }
+                    },
+                    label = {
+                        Text(
+                            text = "方屏模式",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    secondaryLabel = {
+                        Text(
+                            text = if (squareScreenMode) "禁用滚动缩放和淡出" else "启用圆屏缩放效果",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
                             contentDescription = null
                         )
                     },

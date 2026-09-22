@@ -16,6 +16,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import androidx.wear.compose.foundation.LocalReduceMotion
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.foundation.pager.HorizontalPager
@@ -65,9 +66,10 @@ fun WearApp() {
         confirmationMessage = text
     }
 
+    val settingsDataStore = remember { SettingsDataStore(context) }
     var testModeLoaded by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        TestModeState.enabled = SettingsDataStore(context).getTestMode()
+        TestModeState.enabled = settingsDataStore.getTestMode()
         testModeLoaded = true
     }
 
@@ -76,13 +78,19 @@ fun WearApp() {
         pageCount = { 2 }
     )
 
+    var squareScreenMode by remember { mutableStateOf(false) }
+    LaunchedEffect(testModeLoaded) {
+        if (testModeLoaded) {
+            squareScreenMode = settingsDataStore.getSquareScreenMode()
+        }
+    }
+
     if (testModeLoaded) {
         val scheduleStore = remember(TestModeState.enabled) { ScheduleDataStore(context) }
-        val settingsStore = remember(TestModeState.enabled) { SettingsDataStore(context) }
-
-        LaunchedEffect(scheduleStore, settingsStore) {
+ 
+        LaunchedEffect(scheduleStore, settingsDataStore) {
             val events = scheduleStore.getSchedule().events
-            val prepBellEnabled = settingsStore.getPrepBell()
+            val prepBellEnabled = settingsDataStore.getPrepBell()
             val today = todayWeekday()
             val nowSec = currentSecondOfDay()
             val nowMinutes = nowSec / 60
@@ -102,12 +110,12 @@ fun WearApp() {
             }
         }
 
-        DisposableEffect(scheduleStore, settingsStore) {
+        DisposableEffect(scheduleStore, settingsDataStore) {
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(c: Context?, intent: Intent?) {
                     if (intent?.action != Intent.ACTION_TIME_TICK) return
                     scope.launch {
-                        val globalReminderEnabled = settingsStore.getGlobalEventReminder()
+                        val globalReminderEnabled = settingsDataStore.getGlobalEventReminder()
                         val onHomeSecondPage =
                             backStack.lastOrNull() is MenuScreen && pagerState.currentPage == 1
                         if (!globalReminderEnabled || onHomeSecondPage) return@launch
@@ -115,7 +123,7 @@ fun WearApp() {
                         val nowMinutes = currentSecondOfDay() / 60
                         val today = todayWeekday()
                         val events = scheduleStore.getSchedule().events
-                        val prepEnabled = settingsStore.getPrepBell()
+                        val prepEnabled = settingsDataStore.getPrepBell()
 
                         events.firstOrNull {
                             it.weekday == today && toMinutes(it.startTime) == nowMinutes
@@ -182,14 +190,18 @@ fun WearApp() {
         }
 
     WearAppTheme {
-        AppScaffold {
-            val swipeDismissableSceneStrategy = rememberSwipeDismissableSceneStrategy<NavKey>()
+        CompositionLocalProvider(
+            LocalReduceMotion provides squareScreenMode
+        ) {
+            AppScaffold {
+                val swipeDismissableSceneStrategy = rememberSwipeDismissableSceneStrategy<NavKey>()
 
-            NavDisplay(
-                backStack = backStack,
-                entryProvider = entryProvider,
-                sceneStrategies = listOf(swipeDismissableSceneStrategy)
-            )
+                NavDisplay(
+                    backStack = backStack,
+                    entryProvider = entryProvider,
+                    sceneStrategies = listOf(swipeDismissableSceneStrategy)
+                )
+            }
         }
 
         confirmationMessage?.let { message ->
@@ -221,20 +233,11 @@ fun GreetingScreen(
 ) {
     HorizontalPagerScaffold(pagerState = pagerState) {
         HorizontalPager(
-            state = pagerState,
-            flingBehavior = PagerDefaults.snapFlingBehavior(
-                state = pagerState,
-                maxFlingPages = 1,
-                snapPositionalThreshold = PagerScaffoldDefaults.HighSnapPositionalThreshold,
-                snapAnimationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
-            ),
-            rotaryScrollableBehavior = null
+            state = pagerState
         ) { page ->
-            AnimatedPage(pageIndex = page, pagerState = pagerState) {
-                when (page) {
-                    0 -> MainScreen(onChangePage = onChangePage)
-                    else -> ScheduleFullScreen()
-                }
+            when (page) {
+                0 -> MainScreen(onChangePage = onChangePage)
+                else -> ScheduleFullScreen()
             }
         }
     }
