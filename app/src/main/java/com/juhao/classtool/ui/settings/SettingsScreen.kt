@@ -191,7 +191,7 @@ fun SettingsScreen() {
                     },
                     secondaryLabel = {
                         Text(
-                            text = if (testMode) "使用测试数据" else "使用正式数据",
+                            text = "使用测试日程数据",
                             modifier = Modifier.fillMaxWidth()
                         )
                     },

@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-val Context.settingsDataStoreTest: DataStore<Preferences> by preferencesDataStore(name = "settings_test")
 
 class SettingsDataStore(private val context: Context) {
 
@@ -22,13 +21,6 @@ class SettingsDataStore(private val context: Context) {
     private val prepBellKey = booleanPreferencesKey("prep_bell")
     private val globalEventReminderKey = booleanPreferencesKey("global_event_reminder")
     private val squareScreenModeKey = booleanPreferencesKey("square_screen_mode")
-
-    private val dataStore: DataStore<Preferences>
-        get() = if (TestModeState.enabled) {
-            context.settingsDataStoreTest
-        } else {
-            context.settingsDataStore
-        }
 
     val testModeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
         preferences[testModeKey] ?: false
@@ -43,67 +35,67 @@ class SettingsDataStore(private val context: Context) {
         }
     }
 
-    val prepBellFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+    val prepBellFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
         preferences[prepBellKey] ?: true
     }
 
     suspend fun getPrepBell(): Boolean =
-        dataStore.data.map { it[prepBellKey] ?: true }.first()
+        context.settingsDataStore.data.map { it[prepBellKey] ?: true }.first()
 
     suspend fun setPrepBell(enabled: Boolean) {
-        dataStore.edit { preferences ->
+        context.settingsDataStore.edit { preferences ->
             preferences[prepBellKey] = enabled
         }
     }
 
-    val globalEventReminderFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+    val globalEventReminderFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
         preferences[globalEventReminderKey] ?: true
     }
 
     suspend fun getGlobalEventReminder(): Boolean =
-        dataStore.data.map { it[globalEventReminderKey] ?: true }.first()
+        context.settingsDataStore.data.map { it[globalEventReminderKey] ?: true }.first()
 
     suspend fun setGlobalEventReminder(enabled: Boolean) {
-        dataStore.edit { preferences ->
+        context.settingsDataStore.edit { preferences ->
             preferences[globalEventReminderKey] = enabled
         }
     }
 
-    val squareScreenModeFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+    val squareScreenModeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
         preferences[squareScreenModeKey] ?: false
     }
 
     suspend fun getSquareScreenMode(): Boolean =
-        dataStore.data.map { it[squareScreenModeKey] ?: false }.first()
+        context.settingsDataStore.data.map { it[squareScreenModeKey] ?: false }.first()
 
     suspend fun setSquareScreenMode(enabled: Boolean) {
-        dataStore.edit { preferences ->
+        context.settingsDataStore.edit { preferences ->
             preferences[squareScreenModeKey] = enabled
         }
     }
 
-    val classDurationFlow: Flow<Int> = dataStore.data.map { preferences ->
+    val classDurationFlow: Flow<Int> = context.settingsDataStore.data.map { preferences ->
         preferences[classDurationKey] ?: 40
     }
 
-    val breakDurationFlow: Flow<Int> = dataStore.data.map { preferences ->
+    val breakDurationFlow: Flow<Int> = context.settingsDataStore.data.map { preferences ->
         preferences[breakDurationKey] ?: 10
     }
 
     suspend fun getClassDuration(): Int =
-        dataStore.data.map { it[classDurationKey] ?: 40 }.first()
+        context.settingsDataStore.data.map { it[classDurationKey] ?: 40 }.first()
 
     suspend fun setClassDuration(minutes: Int) {
-        dataStore.edit { preferences ->
+        context.settingsDataStore.edit { preferences ->
             preferences[classDurationKey] = minutes
         }
     }
 
     suspend fun getBreakDuration(): Int =
-        dataStore.data.map { it[breakDurationKey] ?: 10 }.first()
+        context.settingsDataStore.data.map { it[breakDurationKey] ?: 10 }.first()
 
     suspend fun setBreakDuration(minutes: Int) {
-        dataStore.edit { preferences ->
+        context.settingsDataStore.edit { preferences ->
             preferences[breakDurationKey] = minutes
         }
     }
