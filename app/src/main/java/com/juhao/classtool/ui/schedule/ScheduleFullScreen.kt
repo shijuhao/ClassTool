@@ -194,7 +194,7 @@ fun ScheduleFullScreen() {
                         LinearProgressIndicator(
                             progress = { progressAnim.value },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ProgressIndicatorDefaults.linearColors(
+                            colors = ProgressIndicatorDefaults.colors(
                                 trackColor = eventColor.copy(alpha = 0.4f),
                                 indicatorColor = eventColor,
                             )
