@@ -156,7 +156,6 @@ fun ScheduleFullScreen() {
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec)
                             .aspectRatio(1f),
-                        transformation = SurfaceTransformation(transformationSpec),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
