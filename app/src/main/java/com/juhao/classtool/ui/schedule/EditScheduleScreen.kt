@@ -319,15 +319,15 @@ fun EditScheduleScreen(
 }
 
 @Composable
-private fun ScheduleEventCard(
+fun ScheduleEventCard(
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
     event: ScheduleEvent,
-    highlighted: Boolean,
-    progress: Float,
-    editMode: Boolean,
-    onClick: () -> Unit,
-    onRequestDelete: () -> Unit
+    highlighted: Boolean = false,
+    progress: Float = 0f,
+    editMode: Boolean = false,
+    onClick: () -> Unit = {},
+    onRequestDelete: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val color = event.courseColor?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface

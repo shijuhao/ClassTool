@@ -3,8 +3,8 @@ package com.juhao.classtool.ui.schedule
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,13 +15,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.lazy.transformedHeight
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.SettingsDataStore
 import kotlinx.coroutines.delay
-import java.time.LocalTime
 
 private const val PREP_BELL_SECONDS = 180
 
@@ -125,89 +128,138 @@ fun ScheduleFullScreen() {
     val eventColor = displayEvent?.courseColor?.let { parseColor(it) }
         ?: MaterialTheme.colorScheme.primary
 
-    ScreenScaffold {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(CircularProgressIndicatorDefaults.FullScreenPadding),
-            contentAlignment = Alignment.Center
+    val upcomingEvents = remember(schedule, today, nowMinutes, displayEvent?.id) {
+        val activeId = displayEvent?.id
+        schedule
+            .filter { it.weekday == today && it.type != ScheduleEventType.BREAK }
+            .filter { event ->
+                if (event.id == activeId) return@filter false
+                val start = toMinutes(event.startTime) ?: return@filter false
+                start > nowMinutes
+            }
+            .sortedBy { it.startTime }
+    }
+
+    val listState = rememberTransformingLazyColumnState()
+    val transformationSpec = rememberTransformationSpec()
+
+    ScreenScaffold(scrollState = listState) { contentPadding ->
+        TransformingLazyColumn(
+            state = listState,
+            contentPadding = contentPadding
         ) {
             val ev = displayEvent
             if (ev != null) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = ev.courseName
-                            ?: when (ev.type) {
-                                ScheduleEventType.BREAK -> "课间休息"
-                                ScheduleEventType.ACTIVITY -> "活动"
-                                ScheduleEventType.CLASS -> "未命名"
-                            },
-                        style = TextStyle(
-                            fontSize = displaySize.sp,
-                            lineHeight = (displaySize * 1.2f).sp,
-                            fontWeight = FontWeight.Normal
-                        ),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
+                item {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .basicMarquee(
-                                iterations = Int.MAX_VALUE,
-                                repeatDelayMillis = 1000,
-                                velocity = 30.dp
+                            .transformedHeight(this, transformationSpec)
+                            .aspectRatio(1f),
+                        transformation = SurfaceTransformation(transformationSpec),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(CircularProgressIndicatorDefaults.FullScreenPadding)
+                        ) {
+                            Text(
+                                text = ev.courseName
+                                    ?: when (ev.type) {
+                                        ScheduleEventType.BREAK -> "课间休息"
+                                        ScheduleEventType.ACTIVITY -> "活动"
+                                        ScheduleEventType.CLASS -> "未命名"
+                                    },
+                                style = TextStyle(
+                                    fontSize = displaySize.sp,
+                                    lineHeight = (displaySize * 1.2f).sp,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        repeatDelayMillis = 1000,
+                                        velocity = 30.dp
+                                    )
                             )
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = if (isPrep) "即将开始" else "${ev.startTime} - ${ev.endTime}",
-                        style = TextStyle(
-                            fontSize = titleSize.sp,
-                            lineHeight = (titleSize * 1.2f).sp
-                        ),
-                        textAlign = TextAlign.Center
-                    )
-                    if (remainingSec != null) {
-                        Spacer(Modifier.height(2.dp))
-                        val remainingText = if (remainingSec > 0) {
-                            if (isFinalPart) {
-                                "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
-                            } else {
-                                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (isPrep) "即将开始" else "${ev.startTime} - ${ev.endTime}",
+                                style = TextStyle(
+                                    fontSize = titleSize.sp,
+                                    lineHeight = (titleSize * 1.2f).sp
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                            if (remainingSec != null) {
+                                Spacer(Modifier.height(2.dp))
+                                val remainingText = if (remainingSec > 0) {
+                                    if (isFinalPart) {
+                                        "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
+                                    } else {
+                                        "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
+                                    }
+                                } else {
+                                    "剩余 00:00"
+                                }
+                                Text(
+                                    text = remainingText,
+                                    style = TextStyle(
+                                        fontSize = mediumSize.sp,
+                                        lineHeight = (mediumSize * 1.2f).sp
+                                    ),
+                                    textAlign = TextAlign.Center,
+                                    color = eventColor
+                                )
                             }
-                        } else {
-                            "剩余 00:00"
                         }
-                        Text(
-                            text = remainingText,
-                            style = TextStyle(
-                                fontSize = mediumSize.sp,
-                                lineHeight = (mediumSize * 1.2f).sp
-                            ),
-                            textAlign = TextAlign.Center,
-                            color = eventColor
+                        CircularProgressIndicator(
+                            progress = { progressAnim.value },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .padding(CircularProgressIndicatorDefaults.FullScreenPadding),
+                            startAngle = 300f,
+                            endAngle = 240f,
+                            colors = ProgressIndicatorDefaults.colors(
+                                trackColor = eventColor.copy(alpha = 0.4f),
+                                indicatorColor = eventColor,
+                            )
                         )
                     }
                 }
-                CircularProgressIndicator(
-                    progress = { progressAnim.value },
-                    modifier = Modifier.fillMaxSize(),
-                    startAngle = 300f,
-                    endAngle = 240f,
-                    colors = ProgressIndicatorDefaults.colors(
-                        trackColor = eventColor.copy(alpha = 0.4f),
-                        indicatorColor = eventColor,
-                    )
-                )
             } else {
-                Text(
-                    text = "当前没有事件",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                item {
+                    ListHeader(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec)
+                            .minimumVerticalContentPadding(
+                                ListHeaderDefaults.minimumTopListContentPadding
+                            ),
+                        transformation = SurfaceTransformation(transformationSpec)
+                    ) { Text(text = "当前没有事件") }
+                }
+            }
+
+            items(
+                count = upcomingEvents.size,
+                key = { index -> upcomingEvents[index].id }
+            ) { index ->
+                val event = upcomingEvents[index]
+                ScheduleEventCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec),
+                    event = event
                 )
             }
         }
