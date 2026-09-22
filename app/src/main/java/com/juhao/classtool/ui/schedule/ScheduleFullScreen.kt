@@ -151,76 +151,75 @@ fun ScheduleFullScreen() {
             val ev = displayEvent
             if (ev != null) {
                 item {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
+                    Text(
+                        text = ev.courseName
+                            ?: when (ev.type) {
+                                ScheduleEventType.BREAK -> "课间休息"
+                                ScheduleEventType.ACTIVITY -> "活动"
+                                ScheduleEventType.CLASS -> "未命名"
+                            },
+                        style = TextStyle(
+                            fontSize = displaySize.sp,
+                            lineHeight = (displaySize * 1.2f).sp,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                    ) {
-                        Text(
-                            text = ev.courseName
-                                ?: when (ev.type) {
-                                    ScheduleEventType.BREAK -> "课间休息"
-                                    ScheduleEventType.ACTIVITY -> "活动"
-                                    ScheduleEventType.CLASS -> "未命名"
-                                },
-                            style = TextStyle(
-                                fontSize = displaySize.sp,
-                                lineHeight = (displaySize * 1.2f).sp,
-                                fontWeight = FontWeight.Normal
-                            ),
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .basicMarquee(
-                                    iterations = Int.MAX_VALUE,
-                                    repeatDelayMillis = 1000,
-                                    velocity = 30.dp
-                                )
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = if (isPrep) "即将开始" else "${ev.startTime} - ${ev.endTime}",
-                            style = TextStyle(
-                                fontSize = titleSize.sp,
-                                lineHeight = (titleSize * 1.2f).sp
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        LinearProgressIndicator(
-                            progress = { progressAnim.value },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ProgressIndicatorDefaults.colors(
-                                trackColor = eventColor.copy(alpha = 0.4f),
-                                indicatorColor = eventColor,
+                            .basicMarquee(
+                                iterations = Int.MAX_VALUE,
+                                repeatDelayMillis = 1000,
+                                velocity = 30.dp
                             )
+                    )
+                }
+                
+                item {
+                    Text(
+                        text = if (isPrep) "即将开始" else "${ev.startTime} - ${ev.endTime}",
+                        style = TextStyle(
+                            fontSize = titleSize.sp,
+                            lineHeight = (titleSize * 1.2f).sp
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+                
+                item {                   
+                    LinearProgressIndicator(
+                        progress = { progressAnim.value },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ProgressIndicatorDefaults.colors(
+                            trackColor = eventColor.copy(alpha = 0.4f),
+                            indicatorColor = eventColor,
                         )
-                        Spacer(Modifier.height(4.dp))
-                        if (remainingSec != null) {
-                            Spacer(Modifier.height(8.dp))
-                            val remainingText = if (remainingSec > 0) {
-                                if (isFinalPart) {
-                                    "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
-                                } else {
-                                    "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
-                                }
+                    )
+                }
+                
+                if (remainingSec != null) {
+                    item {
+                        val remainingText = if (remainingSec > 0) {
+                            if (isFinalPart) {
+                                "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
                             } else {
-                                "00:00"
+                                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
                             }
-                            Text(
-                                text = remainingText,
-                                style = TextStyle(
-                                    fontSize = mediumSize.sp,
-                                    lineHeight = (mediumSize * 1.2f).sp
-                                ),
-                                textAlign = TextAlign.Center,
-                                color = eventColor
-                            )
+                        } else {
+                            "00:00"
                         }
+                        Text(
+                            text = remainingText,
+                            style = TextStyle(
+                                fontSize = mediumSize.sp,
+                                lineHeight = (mediumSize * 1.2f).sp
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            color = eventColor
+                        )
                     }
                 }
             } else {
