@@ -78,12 +78,7 @@ fun WearApp() {
         pageCount = { 2 }
     )
 
-    var squareScreenMode by remember { mutableStateOf(false) }
-    LaunchedEffect(testModeLoaded) {
-        if (testModeLoaded) {
-            squareScreenMode = settingsDataStore.getSquareScreenMode()
-        }
-    }
+    val squareScreenMode by settingsDataStore.squareScreenModeFlow.collectAsState(initial = false)
 
     if (testModeLoaded) {
         val scheduleStore = remember(TestModeState.enabled) { ScheduleDataStore(context) }
