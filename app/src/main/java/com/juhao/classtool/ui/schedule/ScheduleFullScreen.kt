@@ -78,15 +78,7 @@ fun ScheduleFullScreen() {
         displayEvent?.let { toMinutes(it.endTime)?.times(60) }
     }
 
-    val targetProgress = if (isPrep) {
-        val prepStartSec = startSec?.minus(PREP_BELL_SECONDS)
-        if (prepStartSec != null && startSec != null && startSec > prepStartSec) {
-            ((nowSecondOfDay - prepStartSec).toFloat() / (startSec - prepStartSec).toFloat())
-                .coerceIn(0f, 1f)
-        } else {
-            0f
-        }
-    } else if (startSec != null && endSec != null && endSec > startSec) {
+    val targetProgress = if (startSec != null && endSec != null && endSec > startSec) {
         ((nowSecondOfDay - startSec).toFloat() / (endSec - startSec).toFloat())
             .coerceIn(0f, 1f)
     } else {
@@ -188,15 +180,25 @@ fun ScheduleFullScreen() {
                     )
                 }
                 
-                item {                   
-                    LinearProgressIndicator(
-                        progress = { progressAnim.value },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ProgressIndicatorDefaults.colors(
-                            trackColor = eventColor.copy(alpha = 0.4f),
-                            indicatorColor = eventColor,
+                item { 
+                    if (isPrep) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ProgressIndicatorDefaults.colors(
+                                trackColor = eventColor.copy(alpha = 0.4f),
+                                indicatorColor = eventColor,
+                            )
                         )
-                    )
+                    } else {
+                        LinearProgressIndicator(
+                            progress = { progressAnim.value },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ProgressIndicatorDefaults.colors(
+                                trackColor = eventColor.copy(alpha = 0.4f),
+                                indicatorColor = eventColor,
+                            )
+                        )
+                    }
                 }
                 
                 if (remainingSec != null) {
