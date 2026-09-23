@@ -7,8 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.*
@@ -56,30 +54,42 @@ private data class PresetCourse(
 )
 
 private val presetCourses = listOf(
-    PresetCourse("语文", "#FF5722"),
-    PresetCourse("数学", "#4CAF50"),
-    PresetCourse("英语", "#2196F3"),
-    PresetCourse("物理", "#9C27B0"),
-    PresetCourse("化学", "#FFC107"),
-    PresetCourse("生物", "#607D8B"),
-    PresetCourse("历史", "#795548"),
-    PresetCourse("地理", "#009688"),
-    PresetCourse("政治", "#E91E63"),
-    PresetCourse("体育", "#FF9800")
+    PresetCourse("语文", "#FF7043"),
+    PresetCourse("数学", "#66BB6A"),
+    PresetCourse("英语", "#42A5F5"),
+    PresetCourse("物理", "#AB47BC"),
+    PresetCourse("化学", "#FFCA28"),
+    PresetCourse("生物", "#78909C"),
+    PresetCourse("历史", "#A1887F"),
+    PresetCourse("地理", "#26A69A"),
+    PresetCourse("政治", "#EC407A"),
+    PresetCourse("体育", "#FFA726"),
+    PresetCourse("音乐", "#F06292"),
+    PresetCourse("美术", "#FF80AB"),
+    PresetCourse("信息", "#26C6DA"),
+    PresetCourse("心理", "#9CCC65"),
+    PresetCourse("通用技术", "#D4E157"),
+    PresetCourse("晚自习", "#5C6BC0")
 )
 
 private val activityPresets = listOf(
-    PresetCourse("升旗", "#F44336"),
-    PresetCourse("运动会", "#4CAF50"),
-    PresetCourse("班会", "#3F51B5"),
-    PresetCourse("社团", "#FF9800"),
-    PresetCourse("大扫除", "#009688"),
-    PresetCourse("考试", "#9C27B0")
+    PresetCourse("升旗", "#EF5350"),
+    PresetCourse("运动会", "#66BB6A"),
+    PresetCourse("班会", "#5C6BC0"),
+    PresetCourse("社团", "#FFA726"),
+    PresetCourse("大扫除", "#26A69A"),
+    PresetCourse("考试", "#AB47BC"),
+    PresetCourse("讲座", "#26C6DA"),
+    PresetCourse("实践", "#9CCC65"),
+    PresetCourse("联欢", "#EC407A")
 )
 
 private val paletteColors = listOf(
-    "#FF5722", "#4CAF50", "#2196F3", "#009688",
-    "#FF9800", "#9C27B0", "#FFC107", "#607D8B"
+    "#EF5350", "#EC407A", "#AB47BC", "#7E57C2",
+    "#5C6BC0", "#42A5F5", "#26C6DA", "#26A69A",
+    "#66BB6A", "#9CCC65", "#D4E157", "#FFCA28",
+    "#FFA726", "#FF7043", "#A1887F", "#78909C",
+    "#FF80AB", "#40E0D0", "#B2FF59", "#FFE082"
 )
 
 @Composable
@@ -232,7 +242,7 @@ fun EditScheduleScreen(
                             transformation = SurfaceTransformation(transformationSpec)
                         ) { Text(text = weekdayLabel(weekday)) }
                     }
-                    
+
                     item {
                         ButtonGroup(
                             modifier =
@@ -608,11 +618,12 @@ private fun EventEditDialog(
 
         if (type != ScheduleEventType.BREAK) {
             item {
-                LazyRow(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(presets) { preset ->
+                    presets.forEach { preset ->
                         val selected = !isCustom && name == preset.name
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -645,33 +656,32 @@ private fun EventEditDialog(
                         }
                     }
 
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(
-                                    if (isCustom && name.isNotBlank())
-                                        MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceContainerHigh
-                                )
-                                .clickable { showCustomDialog = true }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.edit),
-                                contentDescription = null,
-                                tint = if (isCustom) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(14.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (isCustom && name.isNotBlank())
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceContainerHigh
                             )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "自定义",
-                                color = if (isCustom) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.labelMedium)
-                        }
+                            .clickable { showCustomDialog = true }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.edit),
+                            contentDescription = null,
+                            tint = if (isCustom) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "自定义",
+                            color = if (isCustom) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
                 }
             }
@@ -788,8 +798,12 @@ private fun CustomCourseDialog(
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(text = "颜色")
                 Spacer(Modifier.height(4.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(paletteColors) { hex ->
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    paletteColors.forEach { hex ->
                         val selected = customColor == hex
                         Box(
                             modifier = Modifier

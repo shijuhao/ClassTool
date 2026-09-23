@@ -35,7 +35,7 @@ private val funnyMessagesFar = listOf(
 )
 
 private val funnyMessagesMid = listOf(
-    "撑住，快过半了" to "(ง •_•)ง",
+    "撑住，过半了" to "(ง •_•)ง",
     "还有一阵，别慌" to "(´･ω･`)",
     "保持节奏" to "( •̀ ω •́ )"
 )
@@ -181,9 +181,9 @@ fun ScheduleFullScreen() {
         isPrep -> "prep"
         displayEvent == null -> "idle"
         remainingSec == null -> "idle"
-        remainingSec <= 60 -> "final"
-        remainingSec <= 600 -> "near"
-        remainingSec <= 1200 -> "mid"
+        remainingSec <= 180 -> "final"
+        targetProgress >= 0.75f -> "near"
+        targetProgress >= 0.5f -> "mid"
         else -> "far"
     }
 
