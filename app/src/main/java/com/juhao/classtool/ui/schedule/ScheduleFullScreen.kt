@@ -28,6 +28,42 @@ import kotlinx.coroutines.delay
 
 private const val PREP_BELL_SECONDS = 180
 
+private val funnyMessagesFar = listOf(
+    "稳如老狗" to "(￣▽￣)",
+    "时间还早，摸会儿鱼" to "( ˘ω˘ )",
+    "一切尽在掌握" to "(๑•̀ㅂ•́)و"
+)
+
+private val funnyMessagesMid = listOf(
+    "撑住，快过半了" to "(ง •_•)ง",
+    "还有一阵，别慌" to "(´･ω･`)",
+    "保持节奏" to "( •̀ ω •́ )"
+)
+
+private val funnyMessagesNear = listOf(
+    "快下课了，加把劲" to "٩(๑•̀ω•́๑)۶",
+    "胜利就在前方" to "(๑•̀ㅂ•́)و✧",
+    "再坚持一会儿" to "(｡•̀ᴗ-)✧"
+)
+
+private val funnyMessagesFinal = listOf(
+    "最后冲刺！" to "ヽ(•̀ω•́ )ゝ",
+    "马上结束！" to "(ﾉ>ω<)ﾉ",
+    "冲鸭！" to "ヾ(≧▽≦*)o"
+)
+
+private val funnyMessagesPrep = listOf(
+    "预备铃响啦，准备上课" to "🔔(•̀ᴗ•́)و",
+    "要上课了，收收心" to "(๑•́ ₃ •̀๑)",
+    "预备！" to "⏰(ง •̀_•́)ง"
+)
+
+private val funnyMessagesIdle = listOf(
+    "摸鱼时间到" to "🐟(￣▽￣)",
+    "自由活动，随便浪" to "( ˘ω˘ )",
+    "闲着也是闲着" to "(´･ω･`)"
+)
+
 @Composable
 fun ScheduleFullScreen() {
     val context = LocalContext.current
@@ -77,7 +113,7 @@ fun ScheduleFullScreen() {
     val endSec = remember(displayEvent?.id, isPrep) {
         displayEvent?.let { toMinutes(it.endTime)?.times(60) }
     }
-    
+
     val targetProgress = if (isPrep) {
         val prepStartSec = startSec?.minus(PREP_BELL_SECONDS)
         if (prepStartSec != null && startSec != null && startSec > prepStartSec) {
@@ -141,6 +177,28 @@ fun ScheduleFullScreen() {
             .sortedBy { it.startTime }
     }
 
+    val funnyTier = when {
+        isPrep -> "prep"
+        displayEvent == null -> "idle"
+        remainingSec == null -> "idle"
+        remainingSec <= 60 -> "final"
+        remainingSec <= 600 -> "near"
+        remainingSec <= 1200 -> "mid"
+        else -> "far"
+    }
+
+    val funnyPair = remember(funnyTier, displayEvent?.id) {
+        val pool = when (funnyTier) {
+            "prep" -> funnyMessagesPrep
+            "idle" -> funnyMessagesIdle
+            "final" -> funnyMessagesFinal
+            "near" -> funnyMessagesNear
+            "mid" -> funnyMessagesMid
+            else -> funnyMessagesFar
+        }
+        pool.random()
+    }
+
     val listState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
 
@@ -176,7 +234,7 @@ fun ScheduleFullScreen() {
                             )
                     )
                 }
-                
+
                 item {
                     Text(
                         text = if (isPrep) "即将开始" else "${ev.startTime} - ${ev.endTime}",
@@ -188,8 +246,8 @@ fun ScheduleFullScreen() {
                         textAlign = TextAlign.Center
                     )
                 }
-                
-                item {                   
+
+                item {
                     LinearProgressIndicator(
                         progress = { progressAnim.value },
                         modifier = Modifier.fillMaxWidth(),
@@ -199,7 +257,7 @@ fun ScheduleFullScreen() {
                         )
                     )
                 }
-                
+
                 if (remainingSec != null) {
                     item {
                         val remainingText = if (remainingSec > 0) {
@@ -222,6 +280,19 @@ fun ScheduleFullScreen() {
                             color = eventColor
                         )
                     }
+
+                    item {
+                        Text(
+                            text = "${funnyPair.first} ${funnyPair.second}",
+                            style = TextStyle(
+                                fontSize = 13.sp,
+                                lineHeight = (13f * 1.2f).sp
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
                 item {
@@ -234,6 +305,19 @@ fun ScheduleFullScreen() {
                             ),
                         transformation = SurfaceTransformation(transformationSpec)
                     ) { Text(text = "当前没有事件") }
+                }
+
+                item {
+                    Text(
+                        text = "${funnyPair.first} ${funnyPair.second}",
+                        style = TextStyle(
+                            fontSize = 13.sp,
+                            lineHeight = (13f * 1.2f).sp
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
@@ -252,4 +336,9 @@ fun ScheduleFullScreen() {
             }
         }
     }
+}
+
+private fun currentSecondOfDay(): Int {
+    val now = java.time.LocalTime.now()
+    return now.hour * 3600 + now.minute * 60 + now.second
 }
