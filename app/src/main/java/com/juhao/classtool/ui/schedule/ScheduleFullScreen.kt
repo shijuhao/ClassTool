@@ -58,6 +58,12 @@ private val funnyMessagesPrep = listOf(
     "预备！" to "⏰(ง •̀_•́)ง"
 )
 
+private val funnyMessagesBreak = listOf(
+    "课间休息，活动一下" to "☕(´▽`)",
+    "喝口水，放松放松" to "🥤( ˘ω˘ )",
+    "下课啦，随便逛逛" to "🐾(￣▽￣)"
+)
+
 private val funnyMessagesIdle = listOf(
     "摸鱼时间到" to "🐟(￣▽￣)",
     "自由活动，随便浪" to "( ˘ω˘ )",
@@ -177,8 +183,11 @@ fun ScheduleFullScreen() {
             .sortedBy { it.startTime }
     }
 
+    val isBreak = displayEvent?.type == ScheduleEventType.BREAK
+
     val funnyTier = when {
         isPrep -> "prep"
+        isBreak -> "break"
         displayEvent == null -> "idle"
         remainingSec == null -> "idle"
         remainingSec <= 180 -> "final"
@@ -190,6 +199,7 @@ fun ScheduleFullScreen() {
     val funnyPair = remember(funnyTier, displayEvent?.id) {
         val pool = when (funnyTier) {
             "prep" -> funnyMessagesPrep
+            "break" -> funnyMessagesBreak
             "idle" -> funnyMessagesIdle
             "final" -> funnyMessagesFinal
             "near" -> funnyMessagesNear
@@ -210,29 +220,39 @@ fun ScheduleFullScreen() {
             val ev = displayEvent
             if (ev != null) {
                 item {
-                    Text(
-                        text = ev.courseName
-                            ?: when (ev.type) {
-                                ScheduleEventType.BREAK -> "课间休息"
-                                ScheduleEventType.ACTIVITY -> "活动"
-                                ScheduleEventType.CLASS -> "未命名"
-                            },
-                        style = TextStyle(
-                            fontSize = displaySize.sp,
-                            lineHeight = (displaySize * 1.2f).sp,
-                            fontWeight = FontWeight.Normal
-                        ),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
+                    ListHeader(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .basicMarquee(
-                                iterations = Int.MAX_VALUE,
-                                repeatDelayMillis = 1000,
-                                velocity = 30.dp
-                            )
-                    )
+                            .transformedHeight(this, transformationSpec)
+                            .minimumVerticalContentPadding(
+                                ListHeaderDefaults.minimumTopListContentPadding
+                            ),
+                        transformation = SurfaceTransformation(transformationSpec)
+                    ) {
+                        Text(
+                            text = ev.courseName
+                                ?: when (ev.type) {
+                                    ScheduleEventType.BREAK -> "课间休息"
+                                    ScheduleEventType.ACTIVITY -> "活动"
+                                    ScheduleEventType.CLASS -> "未命名"
+                                },
+                            style = TextStyle(
+                                fontSize = displaySize.sp,
+                                lineHeight = (displaySize * 1.2f).sp,
+                                fontWeight = FontWeight.Normal
+                            ),
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .basicMarquee(
+                                    iterations = Int.MAX_VALUE,
+                                    repeatDelayMillis = 1000,
+                                    velocity = 30.dp
+                                )
+                        )
+                    }
                 }
 
                 item {
