@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.Image
+import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
@@ -44,6 +46,13 @@ fun AboutScreen() {
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
                 ) { Text(text = "关于") }
+            }
+            item {
+                Image(
+                    painter = painterResource(R.mipmap.ic_launcher),
+                    contentDescription = "应用图标",
+                    modifier = Modifier.size(64.dp)
+                )
             }
             item {
                 Text(
