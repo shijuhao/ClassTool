@@ -11,6 +11,7 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import com.juhao.classtool.ui.schedule.*
 import com.juhao.classtool.R
 import com.juhao.classtool.theme.AppCardDefaults
 import kotlinx.coroutines.delay
@@ -20,7 +21,8 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun TimerScreen() {
     val listState = rememberTransformingLazyColumnState()
-    val transformationSpec = rememberTransformationSpec()
+    val square = LocalScreenShape.current == ScreenShape.SQUARE
+    val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
     var elapsedMs by remember { mutableLongStateOf(0L) }
     var running by remember { mutableStateOf(false) }

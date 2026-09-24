@@ -1,24 +1,24 @@
-package com.juhao.classtool.ui.game.coin
+package com.juhao.classtool.ui.game
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
-import com.juhao.classtool.R
+import com.juhao.classtool.ui.schedule.*
+import com.juhao.classtool.ui.components.RoundToast
 import kotlin.random.Random
 
 @Composable
-fun CoinScreen(modifier: Modifier = Modifier) {
+fun DiceScreen(modifier: Modifier = Modifier) {
     val listState = rememberTransformingLazyColumnState()
-    val transformationSpec = rememberTransformationSpec()
-    
-    var showDialog by remember { mutableStateOf(false) }
-    var coinIsInPositive by remember { mutableStateOf(false) }
+    val square = LocalScreenShape.current == ScreenShape.SQUARE
+    val transformationSpec = rememberAdaptiveTransformationSpec(square)
+
+    val context = LocalContext.current
 
     ScreenScaffold(
         scrollState = listState
@@ -37,19 +37,23 @@ fun CoinScreen(modifier: Modifier = Modifier) {
                                 ListHeaderDefaults.minimumTopListContentPadding
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
-                ) { Text(text = "抛硬币") }
+                ) { Text(text = "掷骰子") }
             }
             item {
                 Button(
                     label = {
                         Text(
-                            text = "开抛！",
+                            text = "开掷！",
                             modifier = modifier.fillMaxWidth()
                         )
                     },
-                    onClick = { 
-                        coinIsInPositive = Random.nextBoolean()
-                        showDialog = true
+                    onClick = {
+                        val diceValue = Random.nextInt(1, 7)
+                        RoundToast.show(
+                            context,
+                            "骰子点数：$diceValue 点",
+                            RoundToast.LENGTH_SHORT
+                        )
                     },
                     modifier =
                         Modifier
@@ -60,26 +64,4 @@ fun CoinScreen(modifier: Modifier = Modifier) {
             }
         }
     }
-    
-    AlertDialog(
-        visible = showDialog,
-        onDismissRequest = {
-            showDialog = false
-        },
-        icon = {
-            Icon(
-                painter = painterResource(R.drawable.info),
-                contentDescription = null
-            )
-        },
-        title = { Text(text = "结果") },
-        text = { Text(text = "硬币在 ${if (coinIsInPositive) "正面" else "背面"}") },
-        edgeButton = {
-            AlertDialogDefaults.EdgeButton(
-                onClick = {
-                    showDialog = false
-                }
-            )
-        }
-    )
 }

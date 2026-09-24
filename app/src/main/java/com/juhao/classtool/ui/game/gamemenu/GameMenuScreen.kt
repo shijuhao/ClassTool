@@ -9,6 +9,7 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import com.juhao.classtool.ui.schedule.*
 import com.juhao.classtool.key.*
 import com.juhao.classtool.R
 
@@ -17,7 +18,8 @@ fun GameMenu(
     onChangePage: (AppKey) -> Unit
 ) {
     val listState = rememberTransformingLazyColumnState()
-    val transformationSpec = rememberTransformationSpec()
+    val square = LocalScreenShape.current == ScreenShape.SQUARE
+    val transformationSpec = rememberAdaptiveTransformationSpec(square)
     
     ScreenScaffold(
         scrollState = listState
@@ -37,6 +39,38 @@ fun GameMenu(
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
                 ) { Text(text = "小游戏") }
+            }
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(ReactionNavScreen) },
+                    label = { Text("反应力测试") },
+                    secondaryLabel = { Text("变绿后尽快点击") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.hourglass),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(DiceNavScreen) },
+                    label = { Text("掷骰子") },
+                    secondaryLabel = { Text("1-6 点随机") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.casino),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
             }
             item {
                 FilledTonalButton(

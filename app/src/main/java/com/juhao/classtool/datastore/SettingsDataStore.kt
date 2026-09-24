@@ -5,11 +5,21 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+
+@Serializable
+enum class ScreenShapeMode {
+    AUTO,
+    FORCE_SQUARE,
+    FORCE_ROUND
+}
 
 val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -20,7 +30,10 @@ class SettingsDataStore(private val context: Context) {
     private val breakDurationKey = intPreferencesKey("break_duration_minutes")
     private val prepBellKey = booleanPreferencesKey("prep_bell")
     private val globalEventReminderKey = booleanPreferencesKey("global_event_reminder")
-    private val squareScreenModeKey = booleanPreferencesKey("square_screen_mode")
+    private val screenShapeModeKey = stringPreferencesKey("screen_shape_mode")
+    private val keepScreenOnKey = booleanPreferencesKey("keep_screen_on")
+    private val uiScaleKey = floatPreferencesKey("ui_scale")
+    private val dynamicThemeKey = booleanPreferencesKey("dynamic_theme")
 
     val testModeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
         preferences[testModeKey] ?: false
@@ -61,16 +74,41 @@ class SettingsDataStore(private val context: Context) {
         }
     }
 
-    val squareScreenModeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
-        preferences[squareScreenModeKey] ?: false
+    val screenShapeModeFlow: Flow<ScreenShapeMode> = context.settingsDataStore.data.map { preferences ->
+        val raw = preferences[screenShapeModeKey]
+        if (raw == null) {
+            ScreenShapeMode.AUTO
+        } else {
+            runCatching { ScreenShapeMode.valueOf(raw) }.getOrDefault(ScreenShapeMode.AUTO)
+        }
     }
 
-    suspend fun getSquareScreenMode(): Boolean =
-        context.settingsDataStore.data.map { it[squareScreenModeKey] ?: false }.first()
+    suspend fun getScreenShapeMode(): ScreenShapeMode =
+        context.settingsDataStore.data.map { preferences ->
+            val raw = preferences[screenShapeModeKey]
+            if (raw == null) {
+                ScreenShapeMode.AUTO
+            } else {
+                runCatching { ScreenShapeMode.valueOf(raw) }.getOrDefault(ScreenShapeMode.AUTO)
+            }
+        }.first()
 
-    suspend fun setSquareScreenMode(enabled: Boolean) {
+    suspend fun setScreenShapeMode(mode: ScreenShapeMode) {
         context.settingsDataStore.edit { preferences ->
-            preferences[squareScreenModeKey] = enabled
+            preferences[screenShapeModeKey] = mode.name
+        }
+    }
+
+    val keepScreenOnFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
+        preferences[keepScreenOnKey] ?: false
+    }
+
+    suspend fun getKeepScreenOn(): Boolean =
+        context.settingsDataStore.data.map { it[keepScreenOnKey] ?: false }.first()
+
+    suspend fun setKeepScreenOn(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[keepScreenOnKey] = enabled
         }
     }
 
@@ -97,6 +135,32 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setBreakDuration(minutes: Int) {
         context.settingsDataStore.edit { preferences ->
             preferences[breakDurationKey] = minutes
+        }
+    }
+
+    val uiScaleFlow: Flow<Float> = context.settingsDataStore.data.map { preferences ->
+        preferences[uiScaleKey] ?: 1.0f
+    }
+
+    suspend fun getUiScale(): Float =
+        context.settingsDataStore.data.map { it[uiScaleKey] ?: 1.0f }.first()
+
+    suspend fun setUiScale(scale: Float) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[uiScaleKey] = scale.coerceIn(0.5f, 1.5f)
+        }
+    }
+
+    val dynamicThemeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
+        preferences[dynamicThemeKey] ?: true
+    }
+
+    suspend fun getDynamicTheme(): Boolean =
+        context.settingsDataStore.data.map { it[dynamicThemeKey] ?: true }.first()
+
+    suspend fun setDynamicTheme(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[dynamicThemeKey] = enabled
         }
     }
 }

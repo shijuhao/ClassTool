@@ -10,37 +10,39 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Density
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import androidx.wear.compose.foundation.LocalReduceMotion
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.foundation.pager.HorizontalPager
-import androidx.wear.compose.foundation.pager.PagerDefaults
 import androidx.wear.compose.foundation.pager.PagerState
 import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.*
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
 
 import com.juhao.classtool.key.*
-import com.juhao.classtool.datastore.ScheduleEventType
-import com.juhao.classtool.datastore.ScheduleDataStore
-import com.juhao.classtool.datastore.SettingsDataStore
-import com.juhao.classtool.datastore.TestModeState
+import com.juhao.classtool.datastore.*
 import com.juhao.classtool.ui.about.AboutScreen
-import com.juhao.classtool.ui.game.coin.CoinScreen
+import com.juhao.classtool.ui.countdown.*
+import com.juhao.classtool.ui.components.RoundToast
+import com.juhao.classtool.ui.game.*
 import com.juhao.classtool.ui.game.gamemenu.GameMenu
 import com.juhao.classtool.ui.schedule.*
+import com.juhao.classtool.ui.settings.BackupRestoreScreen
 import com.juhao.classtool.ui.settings.SettingsScreen
 import com.juhao.classtool.theme.WearAppTheme
 import com.juhao.classtool.ui.tool.timer.TimerScreen
 import com.juhao.classtool.ui.tool.toolmenu.ToolMenu
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -60,10 +62,8 @@ fun WearApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var confirmationMessage by remember { mutableStateOf<String?>(null) }
-
     fun showMessage(text: String) {
-        confirmationMessage = text
+        RoundToast.show(context, text, RoundToast.LENGTH_SHORT)
     }
 
     val settingsDataStore = remember { SettingsDataStore(context) }
@@ -78,11 +78,75 @@ fun WearApp() {
         pageCount = { 2 }
     )
 
-    val squareScreenMode by settingsDataStore.squareScreenModeFlow.collectAsState(initial = false)
+    val screenShapeMode by settingsDataStore.screenShapeModeFlow.collectAsState(
+        initial = ScreenShapeMode.AUTO
+    )
+    val isSquare = rememberIsSquareScreen(screenShapeMode)
+    val screenShape = if (isSquare) ScreenShape.SQUARE else ScreenShape.ROUND
+
+    val uiScale by settingsDataStore.uiScaleFlow.collectAsState(initial = 1.0f)
+    val baseDensity = LocalDensity.current
+    val scaledDensity = remember(baseDensity, uiScale) {
+        Density(
+            density = baseDensity.density * uiScale,
+            fontScale = baseDensity.fontScale * uiScale
+        )
+    }
+
+    val dynamicThemeEnabled by settingsDataStore.dynamicThemeFlow.collectAsState(initial = false)
+    var currentEventColor by remember { mutableStateOf<Color?>(null) }
+
+    LaunchedEffect(dynamicThemeEnabled, testModeLoaded) {
+        if (!dynamicThemeEnabled || !testModeLoaded) {
+            currentEventColor = null
+            return@LaunchedEffect
+        }
+        val scheduleStore = ScheduleDataStore(context)
+        scheduleStore.scheduleFlow.collectLatest { schedule ->
+            while (true) {
+                val events = schedule.events
+                val today = todayWeekday()
+                val nowSec = currentSecondOfDay()
+                val nowMinutes = nowSec / 60
+
+                val active = events.firstOrNull { event ->
+                    event.enabled &&
+                        today in event.weekdays &&
+                        toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
+                        toMinutes(event.endTime)?.let { nowMinutes < it } == true
+                }
+                currentEventColor = active?.courseColor?.let { parseColor(it) }
+
+                val nowSecLong = nowSec.toLong()
+
+                    val nextBoundary = events
+                        .asSequence()
+                        .filter { it.enabled && today in it.weekdays }
+                        .flatMap { event ->
+                            sequenceOf(
+                                toMinutes(event.startTime)?.toLong()?.times(60L),
+                                toMinutes(event.endTime)?.toLong()?.times(60L)
+                            )
+                        }
+                        .filterNotNull()
+                        .filter { it > nowSecLong }
+                        .minOrNull()
+                    
+                    val sleepSec = nextBoundary
+                        ?.minus(nowSecLong)
+                        ?.coerceAtLeast(1L)
+                        ?: (86400L - nowSecLong).coerceAtLeast(60L)
+                    
+                    delay(sleepSec * 1000L)
+            }
+        }
+    }
+
+    val themeEventColor = if (dynamicThemeEnabled) currentEventColor else null
 
     if (testModeLoaded) {
         val scheduleStore = remember(TestModeState.enabled) { ScheduleDataStore(context) }
- 
+
         LaunchedEffect(scheduleStore, settingsDataStore) {
             val events = scheduleStore.getSchedule().events
             val prepBellEnabled = settingsDataStore.getPrepBell()
@@ -90,12 +154,14 @@ fun WearApp() {
             val nowSec = currentSecondOfDay()
             val nowMinutes = nowSec / 60
             val hasCurrent = events.any { event ->
-                event.weekday == today &&
+                event.enabled &&
+                    today in event.weekdays &&
                     toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
                     toMinutes(event.endTime)?.let { nowMinutes < it } == true
             }
             val inPrep = prepBellEnabled && events.any { event ->
-                if (event.weekday != today) return@any false
+                if (!event.enabled) return@any false
+                if (today !in event.weekdays) return@any false
                 if (event.type == ScheduleEventType.BREAK) return@any false
                 val startSec = toMinutes(event.startTime)?.times(60) ?: return@any false
                 nowSec in (startSec - 180) until startSec
@@ -121,19 +187,17 @@ fun WearApp() {
                         val prepEnabled = settingsDataStore.getPrepBell()
 
                         events.firstOrNull {
-                            it.weekday == today && toMinutes(it.startTime) == nowMinutes
+                            it.enabled &&
+                                today in it.weekdays &&
+                                toMinutes(it.startTime) == nowMinutes
                         }?.let { event ->
-                            val name = event.courseName ?: when (event.type) {
-                                ScheduleEventType.BREAK -> "课间休息"
-                                ScheduleEventType.ACTIVITY -> "活动"
-                                ScheduleEventType.CLASS -> "未命名"
-                            }
-                            showMessage("$name 开始了")
+                            showMessage("${eventDisplayName(event)} 开始了")
                         }
 
                         if (prepEnabled) {
                             events.firstOrNull {
-                                it.weekday == today &&
+                                it.enabled &&
+                                    today in it.weekdays &&
                                     it.type != ScheduleEventType.BREAK &&
                                     toMinutes(it.startTime)?.minus(3) == nowMinutes
                             }?.let { event ->
@@ -150,6 +214,28 @@ fun WearApp() {
             }
         }
     }
+    
+    var startupCountdownChecked by remember { mutableStateOf(false) }
+    LaunchedEffect(testModeLoaded) {
+        if (!testModeLoaded || startupCountdownChecked) return@LaunchedEffect
+        startupCountdownChecked = true
+    
+        val countdownStore = CountdownDataStore(context)
+        val upcoming = countdownStore.getDays()
+            .map { it to daysUntil(it.dateMillis) }
+            .filter { (_, d) -> d in 0..5 }
+            .sortedBy { (_, d) -> d }
+    
+        if (upcoming.isNotEmpty()) {
+            val (nearest, remain) = upcoming.first()
+            val text = when (remain) {
+                0L -> "「${nearest.title}」就是今天"
+                1L -> "「${nearest.title}」明天到来"
+                else -> "「${nearest.title}」还有 $remain 天"
+            }
+            showMessage(text)
+        }
+    }
 
     val entryProvider =
         remember {
@@ -160,23 +246,66 @@ fun WearApp() {
                         onChangePage = { backStack.add(it) }
                     )
                 }
+                
                 entry<EditScheduleNavScreen> {
                     EditScheduleScreen()
                 }
+                entry<CourseScheduleNavScreen> {
+                    CourseScheduleScreen()
+                }
+                
+                entry<CountdownNavScreen> {
+                    CountdownScreen(
+                        onNavigate = { key -> backStack.add(key as NavKey) }
+                    )
+                }
+                entry<AddCountdownNavScreen> {
+                    CountdownEditScreen(
+                        dayId = null,
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<EditCountdownNavScreen> { key ->
+                    CountdownEditScreen(
+                        dayId = key.id,
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<CountdownDetailNavScreen> { key ->
+                    CountdownDetailScreen(
+                        dayId = key.id,
+                        onEdit = { backStack.add(EditCountdownNavScreen(key.id)) }, // ← 带上 id
+                        onBack = { backStack.removeLastOrNull() }
+                    )
+                }
+
                 entry<ToolMenuNavScreen> {
                     ToolMenu(onChangePage = { backStack.add(it) })
                 }
                 entry<TimerNavScreen> {
                     TimerScreen()
                 }
+
                 entry<GameMenuNavScreen> {
                     GameMenu(onChangePage = { backStack.add(it) })
+                }
+                entry<ReactionNavScreen> {
+                    ReactionScreen()
                 }
                 entry<CoinNavScreen> {
                     CoinScreen()
                 }
+                entry<DiceNavScreen> {
+                    DiceScreen()
+                }
+
                 entry<SettingsNavScreen> {
-                    SettingsScreen()
+                    SettingsScreen(
+                        onNavigateToBackup = { backStack.add(BackupRestoreNavScreen) }
+                    )
+                }
+                entry<BackupRestoreNavScreen> {
+                    BackupRestoreScreen()
                 }
                 entry<AboutNavScreen> {
                     AboutScreen()
@@ -184,9 +313,10 @@ fun WearApp() {
             }
         }
 
-    WearAppTheme {
+    WearAppTheme(eventColor = themeEventColor) {
         CompositionLocalProvider(
-            LocalReduceMotion provides squareScreenMode
+            LocalScreenShape provides screenShape,
+            LocalDensity provides scaledDensity
         ) {
             AppScaffold {
                 val swipeDismissableSceneStrategy = rememberSwipeDismissableSceneStrategy<NavKey>()
@@ -195,26 +325,6 @@ fun WearApp() {
                     backStack = backStack,
                     entryProvider = entryProvider,
                     sceneStrategies = listOf(swipeDismissableSceneStrategy)
-                )
-            }
-        }
-
-        confirmationMessage?.let { message ->
-            val textStyle = ConfirmationDialogDefaults.curvedTextStyle
-            ConfirmationDialog(
-                visible = true,
-                onDismissRequest = { confirmationMessage = null },
-                curvedText = {
-                    confirmationDialogCurvedText(
-                        message,
-                        textStyle
-                    )
-                }
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.info),
-                    contentDescription = null,
-                    modifier = Modifier.size(ConfirmationDialogDefaults.SmallIconSize)
                 )
             }
         }
@@ -243,7 +353,8 @@ fun MainScreen(
     onChangePage: (AppKey) -> Unit
 ) {
     val scrollState = rememberTransformingLazyColumnState()
-    val transformationSpec = rememberTransformationSpec()
+    val square = LocalScreenShape.current == ScreenShape.SQUARE
+    val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
     ScreenScaffold(
         scrollState = scrollState
@@ -268,10 +379,42 @@ fun MainScreen(
             item {
                 FilledTonalButton(
                     onClick = { onChangePage(EditScheduleNavScreen) },
+                    label = { Text("时间表") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.access_time),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(CourseScheduleNavScreen) },
                     label = { Text("课程表") },
                     icon = {
                         Icon(
                             painter = painterResource(R.drawable.date_range),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(CountdownNavScreen) },
+                    label = { Text("倒计日") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.event),
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )

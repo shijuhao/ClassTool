@@ -1,12 +1,15 @@
 package com.juhao.classtool.ui.schedule
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -18,7 +21,6 @@ import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
@@ -27,6 +29,7 @@ import com.juhao.classtool.datastore.SettingsDataStore
 import kotlinx.coroutines.delay
 
 private const val PREP_BELL_SECONDS = 180
+private const val FINAL_SPRINT_SECONDS = 180
 
 private val funnyMessagesFar = listOf(
     "稳如老狗" to "(￣▽￣)",
@@ -70,11 +73,24 @@ private val funnyMessagesIdle = listOf(
     "闲着也是闲着" to "(´･ω･`)"
 )
 
+private fun funnyPool(tier: String): List<Pair<String, String>> = when (tier) {
+    "prep" -> funnyMessagesPrep
+    "break" -> funnyMessagesBreak
+    "idle" -> funnyMessagesIdle
+    "final" -> funnyMessagesFinal
+    "near" -> funnyMessagesNear
+    "mid" -> funnyMessagesMid
+    else -> funnyMessagesFar
+}
+
 @Composable
-fun ScheduleFullScreen() {
+fun ScheduleFullScreen(isActive: Boolean = true) {
     val context = LocalContext.current
     val store = remember { ScheduleDataStore(context) }
     val settingsStore = remember { SettingsDataStore(context) }
+
+    val keepScreenOnSetting by settingsStore.keepScreenOnFlow.collectAsState(initial = false)
+    KeepScreenOn(enabled = keepScreenOnSetting && isActive)
 
     var schedule by remember { mutableStateOf(emptyList<ScheduleEvent>()) }
     var prepBellEnabled by remember { mutableStateOf(true) }
@@ -94,7 +110,8 @@ fun ScheduleFullScreen() {
 
     val currentEvent = remember(schedule, today, nowMinutes) {
         schedule.firstOrNull { event ->
-            event.weekday == today &&
+            event.enabled &&
+                today in event.weekdays &&
                 toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
                 toMinutes(event.endTime)?.let { nowMinutes < it } == true
         }
@@ -103,7 +120,8 @@ fun ScheduleFullScreen() {
     val prepEvent = remember(schedule, today, nowSecondOfDay, prepBellEnabled) {
         if (!prepBellEnabled) return@remember null
         schedule.firstOrNull { event ->
-            if (event.weekday != today) return@firstOrNull false
+            if (!event.enabled) return@firstOrNull false
+            if (today !in event.weekdays) return@firstOrNull false
             if (event.type == ScheduleEventType.BREAK) return@firstOrNull false
             val startSec = toMinutes(event.startTime)?.times(60) ?: return@firstOrNull false
             nowSecondOfDay in (startSec - PREP_BELL_SECONDS) until startSec
@@ -122,41 +140,32 @@ fun ScheduleFullScreen() {
 
     val targetProgress = if (isPrep) {
         val prepStartSec = startSec?.minus(PREP_BELL_SECONDS)
-        if (prepStartSec != null && startSec != null && startSec > prepStartSec) {
+        if (prepStartSec != null && startSec > prepStartSec) {
             val elapsed = (nowSecondOfDay - prepStartSec).toFloat()
             val total = (startSec - prepStartSec).toFloat()
             (1f - elapsed / total).coerceIn(0f, 1f)
-        } else {
-            0f
-        }
+        } else 0f
     } else if (startSec != null && endSec != null && endSec > startSec) {
         ((nowSecondOfDay - startSec).toFloat() / (endSec - startSec).toFloat())
             .coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    } else 0f
 
     val progressAnim = remember { Animatable(0f) }
 
     LaunchedEffect(displayEvent?.id, isPrep) {
-        if (displayEvent == null) {
-            progressAnim.snapTo(0f)
-        }
+        if (displayEvent == null) progressAnim.snapTo(0f)
     }
-
     LaunchedEffect(targetProgress) {
-        if (displayEvent != null) {
-            progressAnim.snapTo(targetProgress)
-        }
+        if (displayEvent != null) progressAnim.snapTo(targetProgress)
     }
 
     val remainingSec = if (isPrep) {
-        startSec?.minus(nowSecondOfDay)
+        startSec?.minus(nowSecondOfDay)?.takeIf { it > 0 }
     } else {
-        endSec?.minus(nowSecondOfDay)
+        endSec?.minus(nowSecondOfDay)?.takeIf { it > 0 }
     }
 
-    val isFinalPart = remainingSec != null && remainingSec in 1..PREP_BELL_SECONDS
+    val isFinalPart = remainingSec != null && remainingSec in 1..FINAL_SPRINT_SECONDS
 
     val finalPartProgress by animateFloatAsState(
         targetValue = if (isFinalPart) 1f else 0f,
@@ -164,17 +173,19 @@ fun ScheduleFullScreen() {
         label = "finalPart"
     )
 
-    val displaySize = 32f
-    val titleSize = 20f
+    val square = LocalScreenShape.current == ScreenShape.SQUARE
+    val displaySize = if (square) 28f else 32f
+    val titleSize = if (square) 18f else 20f
     val mediumSize = 16f * (1f + 1.5f * finalPartProgress)
-
-    val eventColor = displayEvent?.courseColor?.let { parseColor(it) }
-        ?: MaterialTheme.colorScheme.primary
 
     val upcomingEvents = remember(schedule, today, nowMinutes, displayEvent?.id) {
         val activeId = displayEvent?.id
         schedule
-            .filter { it.weekday == today && it.type != ScheduleEventType.BREAK }
+            .filter {
+                it.enabled &&
+                    today in it.weekdays &&
+                    it.type != ScheduleEventType.BREAK
+            }
             .filter { event ->
                 if (event.id == activeId) return@filter false
                 val start = toMinutes(event.startTime) ?: return@filter false
@@ -184,39 +195,29 @@ fun ScheduleFullScreen() {
     }
 
     val isBreak = displayEvent?.type == ScheduleEventType.BREAK
+    val isActivity = displayEvent?.type == ScheduleEventType.ACTIVITY
+    val showFunny = displayEvent != null && !isActivity
 
     val funnyTier = when {
         isPrep -> "prep"
         isBreak -> "break"
         displayEvent == null -> "idle"
         remainingSec == null -> "idle"
-        remainingSec <= 180 -> "final"
+        remainingSec <= FINAL_SPRINT_SECONDS -> "final"
         targetProgress >= 0.75f -> "near"
         targetProgress >= 0.5f -> "mid"
         else -> "far"
     }
 
     val funnyPair = remember(funnyTier, displayEvent?.id) {
-        val pool = when (funnyTier) {
-            "prep" -> funnyMessagesPrep
-            "break" -> funnyMessagesBreak
-            "idle" -> funnyMessagesIdle
-            "final" -> funnyMessagesFinal
-            "near" -> funnyMessagesNear
-            "mid" -> funnyMessagesMid
-            else -> funnyMessagesFar
-        }
-        pool.random()
+        funnyPool(funnyTier).random()
     }
 
     val listState = rememberTransformingLazyColumnState()
-    val transformationSpec = rememberTransformationSpec()
+    val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
     ScreenScaffold(scrollState = listState) { contentPadding ->
-        TransformingLazyColumn(
-            state = listState,
-            contentPadding = contentPadding
-        ) {
+        TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
             val ev = displayEvent
             if (ev != null) {
                 item {
@@ -230,12 +231,7 @@ fun ScheduleFullScreen() {
                         transformation = SurfaceTransformation(transformationSpec)
                     ) {
                         Text(
-                            text = ev.courseName
-                                ?: when (ev.type) {
-                                    ScheduleEventType.BREAK -> "课间休息"
-                                    ScheduleEventType.ACTIVITY -> "活动"
-                                    ScheduleEventType.CLASS -> "未命名"
-                                },
+                            text = eventDisplayName(ev),
                             style = TextStyle(
                                 fontSize = displaySize.sp,
                                 lineHeight = (displaySize * 1.2f).sp,
@@ -272,8 +268,8 @@ fun ScheduleFullScreen() {
                         progress = { progressAnim.value },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ProgressIndicatorDefaults.colors(
-                            trackColor = eventColor.copy(alpha = 0.4f),
-                            indicatorColor = eventColor,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            indicatorColor = MaterialTheme.colorScheme.primary,
                         )
                     )
                 }
@@ -286,9 +282,7 @@ fun ScheduleFullScreen() {
                             } else {
                                 "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
                             }
-                        } else {
-                            "00:00"
-                        }
+                        } else "00:00"
                         Text(
                             text = remainingText,
                             style = TextStyle(
@@ -297,21 +291,31 @@ fun ScheduleFullScreen() {
                             ),
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Center,
-                            color = eventColor
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
-                    item {
-                        Text(
-                            text = "${funnyPair.first} ${funnyPair.second}",
-                            style = TextStyle(
-                                fontSize = 13.sp,
-                                lineHeight = (13f * 1.2f).sp
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    if (showFunny) {
+                        item {
+                            AnimatedContent(
+                                targetState = funnyPair,
+                                transitionSpec = {
+                                    fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+                                },
+                                label = "funny"
+                            ) { pair ->
+                                Text(
+                                    text = "${pair.first} ${pair.second}",
+                                    style = TextStyle(
+                                        fontSize = 13.sp,
+                                        lineHeight = (13f * 1.2f).sp
+                                    ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             } else {
@@ -328,16 +332,39 @@ fun ScheduleFullScreen() {
                 }
 
                 item {
-                    Text(
-                        text = "${funnyPair.first} ${funnyPair.second}",
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            lineHeight = (13f * 1.2f).sp
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    AnimatedContent(
+                        targetState = funnyPair,
+                        transitionSpec = {
+                            fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+                        },
+                        label = "funny"
+                    ) { pair ->
+                        Text(
+                            text = "${pair.first} ${pair.second}",
+                            style = TextStyle(
+                                fontSize = 13.sp,
+                                lineHeight = (13f * 1.2f).sp
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (upcomingEvents.isEmpty()) {
+                    item {
+                        Text(
+                            text = "今天没有安排，好好休息 ~",
+                            style = TextStyle(
+                                fontSize = 13.sp,
+                                lineHeight = (13f * 1.2f).sp
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 

@@ -1,26 +1,25 @@
-package com.juhao.classtool.ui.tool.toolmenu
+package com.juhao.classtool.ui.game
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.juhao.classtool.ui.schedule.*
-import com.juhao.classtool.key.*
-import com.juhao.classtool.R
+import com.juhao.classtool.ui.components.RoundToast
+import kotlin.random.Random
 
 @Composable
-fun ToolMenu(
-    onChangePage: (AppKey) -> Unit
-) {
+fun CoinScreen(modifier: Modifier = Modifier) {
     val listState = rememberTransformingLazyColumnState()
     val square = LocalScreenShape.current == ScreenShape.SQUARE
     val transformationSpec = rememberAdaptiveTransformationSpec(square)
-    
+
+    val context = LocalContext.current
+
     ScreenScaffold(
         scrollState = listState
     ) { contentPadding ->
@@ -38,20 +37,28 @@ fun ToolMenu(
                                 ListHeaderDefaults.minimumTopListContentPadding
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
-                ) { Text(text = "工具") }
+                ) { Text(text = "抛硬币") }
             }
             item {
-                FilledTonalButton(
-                    onClick = { onChangePage(TimerNavScreen) },
-                    label = { Text("秒表") },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.timer),
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                Button(
+                    label = {
+                        Text(
+                            text = "开抛！",
+                            modifier = modifier.fillMaxWidth()
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        val positive = Random.nextBoolean()
+                        RoundToast.show(
+                            context,
+                            "硬币在 ${if (positive) "正面" else "背面"}",
+                            RoundToast.LENGTH_SHORT
+                        )
+                    },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
