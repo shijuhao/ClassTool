@@ -95,8 +95,6 @@ fun WearApp() {
     val isSquare = rememberIsSquareScreen(screenShapeMode)
     val screenShape = if (isSquare) ScreenShape.SQUARE else ScreenShape.ROUND
 
-    // Activity 已在 attachBaseContext 里全局缩放 densityDpi，
-    // 这里直接用 LocalDensity.current 即为缩放后的值，无需再手动 * uiScale。
     val uiScale by settingsDataStore.uiScaleFlow.collectAsState(initial = 1.0f)
     val dynamicThemeEnabled by settingsDataStore.dynamicThemeFlow.collectAsState(initial = false)
     var currentEventColor by remember { mutableStateOf<Color?>(null) }
