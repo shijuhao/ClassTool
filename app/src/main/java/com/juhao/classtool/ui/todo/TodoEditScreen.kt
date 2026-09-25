@@ -1,39 +1,32 @@
-package com.juhao.classtool.ui.countdown
+package com.juhao.classtool.ui.todo
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.SolidColor
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
-import com.juhao.classtool.datastore.CountdownDataStore
-import com.juhao.classtool.datastore.CountdownDay
+import com.juhao.classtool.datastore.TodoDataStore
+import com.juhao.classtool.datastore.TodoItem
 import com.juhao.classtool.utils.*
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 @Composable
-fun CountdownEditScreen(
-    dayId: Long?,
+fun TodoEditScreen(
+    itemId: Long?,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val store = remember { CountdownDataStore(context) }
+    val store = remember { TodoDataStore(context) }
 
     val listState = rememberTransformingLazyColumnState()
     val square = LocalScreenShape.current == ScreenShape.SQUARE
@@ -41,43 +34,15 @@ fun CountdownEditScreen(
 
     var title by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(LocalDate.now()) }
-    var loaded by remember { mutableStateOf(false) }
 
-    var showDatePicker by remember { mutableStateOf(false) }
-
-    LaunchedEffect(dayId) {
-        if (dayId != null) {
-            store.getDay(dayId)?.let {
+    LaunchedEffect(itemId) {
+        if (itemId != null) {
+            store.getItem(itemId)?.let {
                 title = it.title
                 note = it.note
-                date = Instant.ofEpochMilli(it.dateMillis)
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
             }
         }
-        loaded = true
     }
-
-    if (showDatePicker) {
-        BackHandler {
-            showDatePicker = false
-        }
-        DatePicker(
-            initialDate = date,
-            onDatePicked = {
-                date = it
-                showDatePicker = false
-            },
-            datePickerType = DatePickerType.YearMonthDay,
-            minValidDate = LocalDate.now()
-        )
-        return
-    }
-
-    val formatter = DateTimeFormatter
-        .ofLocalizedDate(FormatStyle.MEDIUM)
-        .withLocale(LocalConfiguration.current.locales[0])
 
     ScreenScaffold(scrollState = listState) { contentPadding ->
         TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
@@ -90,7 +55,7 @@ fun CountdownEditScreen(
                             ListHeaderDefaults.minimumTopListContentPadding
                         ),
                     transformation = SurfaceTransformation(transformationSpec)
-                ) { Text(if (dayId == null) "添加倒计日" else "编辑倒计日") }
+                ) { Text(if (itemId == null) "添加待办" else "编辑待办") }
             }
 
             item {
@@ -101,7 +66,7 @@ fun CountdownEditScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 ) {
                     Column(Modifier.fillMaxWidth()) {
-                        Text("名称")
+                        Text("标题")
                         Spacer(Modifier.height(4.dp))
                         BasicTextField(
                             value = title,
@@ -135,37 +100,14 @@ fun CountdownEditScreen(
             }
 
             item {
-                FilledTonalButton(
-                    onClick = { showDatePicker = true },
-                    label = { Text("目标日期") },
-                    secondaryLabel = { Text(date.format(formatter)) },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Date_range,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-
-            item {
                 Button(
                     onClick = {
                         if (title.isBlank()) return@Button
                         scope.launch {
                             store.upsert(
-                                CountdownDay(
-                                    id = dayId ?: System.currentTimeMillis(),
+                                TodoItem(
+                                    id = itemId ?: System.currentTimeMillis(),
                                     title = title.trim(),
-                                    dateMillis = date
-                                        .atStartOfDay(ZoneId.systemDefault())
-                                        .toInstant()
-                                        .toEpochMilli(),
                                     note = note.trim()
                                 )
                             )

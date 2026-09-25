@@ -9,8 +9,8 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
-import com.juhao.classtool.ui.schedule.*
-import com.juhao.classtool.key.*
+import com.juhao.classtool.utils.*
+import com.juhao.classtool.navigation.*
 
 @Composable
 fun ToolMenu(

@@ -16,9 +16,8 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
-import com.juhao.classtool.ui.schedule.*
 import com.juhao.classtool.R
-import com.juhao.classtool.utils.getAppVersionInfo
+import com.juhao.classtool.utils.*
 
 @Composable
 fun AboutScreen() {
@@ -27,7 +26,6 @@ fun AboutScreen() {
     val listState = rememberTransformingLazyColumnState()
     val square = LocalScreenShape.current == ScreenShape.SQUARE
     val transformationSpec = rememberAdaptiveTransformationSpec(square)
-
     
     ScreenScaffold(
         scrollState = listState
@@ -50,7 +48,7 @@ fun AboutScreen() {
             }
             item {
                 Image(
-                    painter = painterResource(R.mipmap.ic_launcher),
+                    painter = painterResource(R.drawable.ic_launcher),
                     contentDescription = "应用图标",
                     modifier = Modifier.size(64.dp)
                 )

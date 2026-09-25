@@ -29,19 +29,13 @@ import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
 import com.composables.icons.materialsymbols.roundedfilled.Gamepad
 
-import com.juhao.classtool.key.*
-import com.juhao.classtool.datastore.*
-import com.juhao.classtool.ui.about.AboutScreen
 import com.juhao.classtool.ui.countdown.*
-import com.juhao.classtool.ui.components.RoundToast
-import com.juhao.classtool.ui.game.*
-import com.juhao.classtool.ui.game.gamemenu.GameMenu
+import com.juhao.classtool.datastore.*
+import com.juhao.classtool.navigation.*
+import com.juhao.classtool.utils.*
 import com.juhao.classtool.ui.schedule.*
-import com.juhao.classtool.ui.settings.BackupRestoreScreen
-import com.juhao.classtool.ui.settings.SettingsScreen
+import com.juhao.classtool.ui.components.RoundToast
 import com.juhao.classtool.theme.WearAppTheme
-import com.juhao.classtool.ui.tool.timer.TimerScreen
-import com.juhao.classtool.ui.tool.toolmenu.ToolMenu
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -250,70 +244,30 @@ fun WearApp() {
                         onChangePage = { backStack.add(it) }
                     )
                 }
-
-                entry<EditScheduleNavScreen> {
-                    EditScheduleScreen()
-                }
-                entry<CourseScheduleNavScreen> {
-                    CourseScheduleScreen()
-                }
-
-                entry<CountdownNavScreen> {
-                    CountdownScreen(
-                        onNavigate = { key -> backStack.add(key as NavKey) }
-                    )
-                }
-                entry<AddCountdownNavScreen> {
-                    CountdownEditScreen(
-                        dayId = null,
-                        onBack = { backStack.removeLastOrNull() }
-                    )
-                }
-                entry<EditCountdownNavScreen> { key ->
-                    CountdownEditScreen(
-                        dayId = key.id,
-                        onBack = { backStack.removeLastOrNull() }
-                    )
-                }
-                entry<CountdownDetailNavScreen> { key ->
-                    CountdownDetailScreen(
-                        dayId = key.id,
-                        onEdit = { backStack.add(EditCountdownNavScreen(key.id)) }, // ← 带上 id
-                        onBack = { backStack.removeLastOrNull() }
-                    )
-                }
-
-                entry<ToolMenuNavScreen> {
-                    ToolMenu(onChangePage = { backStack.add(it) })
-                }
-                entry<TimerNavScreen> {
-                    TimerScreen()
-                }
-
-                entry<GameMenuNavScreen> {
-                    GameMenu(onChangePage = { backStack.add(it) })
-                }
-                entry<ReactionNavScreen> {
-                    ReactionScreen()
-                }
-                entry<CoinNavScreen> {
-                    CoinScreen()
-                }
-                entry<DiceNavScreen> {
-                    DiceScreen()
-                }
-
-                entry<SettingsNavScreen> {
-                    SettingsScreen(
-                        onNavigateToBackup = { backStack.add(BackupRestoreNavScreen) }
-                    )
-                }
-                entry<BackupRestoreNavScreen> {
-                    BackupRestoreScreen()
-                }
-                entry<AboutNavScreen> {
-                    AboutScreen()
-                }
+    
+                scheduleEntries()
+    
+                countdownEntries(
+                    onBack = { backStack.removeLastOrNull() },
+                    onNavigate = { backStack.add(it) },
+                )
+    
+                todoEntries(
+                    onBack = { backStack.removeLastOrNull() },
+                    onNavigate = { backStack.add(it) },
+                )
+    
+                toolEntries(
+                    onNavigate = { backStack.add(it) },
+                )
+    
+                gameEntries(
+                    onNavigate = { backStack.add(it) },
+                )
+    
+                settingsEntries(
+                    onNavigate = { backStack.add(it) },
+                )
             }
         }
 
@@ -418,6 +372,22 @@ fun MainScreen(
                     icon = {
                         Icon(
                             imageVector = MaterialSymbols.Rounded.Event,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(TodoNavScreen) },
+                    label = { Text("待办") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Checklist,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )

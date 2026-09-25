@@ -15,9 +15,7 @@ import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScreenShapeMode
 import com.juhao.classtool.datastore.SettingsDataStore
 import com.juhao.classtool.datastore.TestModeState
-import com.juhao.classtool.ui.schedule.LocalScreenShape
-import com.juhao.classtool.ui.schedule.ScreenShape
-import com.juhao.classtool.ui.schedule.rememberAdaptiveTransformationSpec
+import com.juhao.classtool.utils.*
 import kotlinx.coroutines.launch
 
 private val UI_SCALE_STEPS = (5..15 step 1).map { it / 10f }

@@ -1,4 +1,4 @@
-package com.juhao.classtool.ui.tool.timer
+package com.juhao.classtool.ui.tool
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -11,7 +11,7 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
-import com.juhao.classtool.ui.schedule.*
+import com.juhao.classtool.utils.*
 import com.juhao.classtool.theme.AppCardDefaults
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive

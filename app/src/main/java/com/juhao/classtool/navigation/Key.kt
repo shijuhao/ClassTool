@@ -1,4 +1,4 @@
-package com.juhao.classtool.key
+package com.juhao.classtool.navigation
 
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
@@ -22,6 +22,15 @@ data object AddCountdownNavScreen : AppKey
 data class EditCountdownNavScreen(val id: Long) : AppKey
 @Serializable
 data class CountdownDetailNavScreen(val id: Long) : AppKey
+
+@Serializable
+data object TodoNavScreen : AppKey
+@Serializable
+data object AddTodoNavScreen : AppKey
+@Serializable
+data class EditTodoNavScreen(val id: Long) : AppKey
+@Serializable
+data class TodoDetailNavScreen(val id: Long) : AppKey
 
 @Serializable
 data object ToolMenuNavScreen : AppKey

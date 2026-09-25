@@ -23,6 +23,7 @@ import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.Weekday
 import com.juhao.classtool.ui.components.RoundToast
+import com.juhao.classtool.utils.*
 import kotlinx.coroutines.launch
 
 private val presetCourses = listOf(

@@ -1,7 +1,8 @@
-package com.juhao.classtool.ui.countdown
+package com.juhao.classtool.ui.todo
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -10,24 +11,24 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
-import com.juhao.classtool.datastore.CountdownDataStore
+import com.juhao.classtool.datastore.TodoDataStore
 import com.juhao.classtool.navigation.*
 import com.juhao.classtool.utils.*
 
 @Composable
-fun CountdownScreen(
+fun TodoScreen(
     onNavigate: (Any) -> Unit
 ) {
     val context = LocalContext.current
-    val store = remember { CountdownDataStore(context) }
-    val days by store.daysFlow.collectAsState(initial = emptyList())
+    val store = remember { TodoDataStore(context) }
+    val items by store.itemsFlow.collectAsState(initial = emptyList())
 
     val listState = rememberTransformingLazyColumnState()
     val square = LocalScreenShape.current == ScreenShape.SQUARE
     val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
-    val sorted = remember(days) {
-        days.sortedBy { kotlin.math.abs(daysUntil(it.dateMillis)) }
+    val sorted = remember(items) {
+        items.sortedWith(compareBy({ it.done }, { -it.createdMillis }))
     }
 
     ScreenScaffold(scrollState = listState) { contentPadding ->
@@ -41,13 +42,13 @@ fun CountdownScreen(
                             ListHeaderDefaults.minimumTopListContentPadding
                         ),
                     transformation = SurfaceTransformation(transformationSpec)
-                ) { Text("倒计日") }
+                ) { Text("TODO") }
             }
 
             item {
                 FilledTonalButton(
-                    onClick = { onNavigate(AddCountdownNavScreen) },
-                    label = { Text("添加倒计日") },
+                    onClick = { onNavigate(AddTodoNavScreen) },
+                    label = { Text("添加待办") },
                     icon = {
                         Icon(
                             imageVector = MaterialSymbols.Rounded.Add,
@@ -63,17 +64,34 @@ fun CountdownScreen(
             }
 
             items(sorted.size) { index ->
-                val day = sorted[index]
-                val remaining = daysUntil(day.dateMillis)
+                val item = sorted[index]
                 FilledTonalButton(
-                    onClick = { onNavigate(CountdownDetailNavScreen(day.id)) },
-                    label = { Text(day.title) },
+                    onClick = { onNavigate(TodoDetailNavScreen(item.id)) },
+                    label = { Text(item.title) },
                     secondaryLabel = {
-                        Text("${countdownLabel(remaining)} · ${formatDate(day.dateMillis)}")
+                        Text(
+                            when {
+                                item.done -> "已完成"
+                                item.note.isNotBlank() -> item.note
+                                else -> "待完成"
+                            }
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = if (item.done) {
+                                MaterialSymbols.Rounded.Check_circle
+                            } else {
+                                MaterialSymbols.Rounded.Radio_button_unchecked
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .transformedHeight(this, transformationSpec),
+                        .transformedHeight(this, transformationSpec)
+                        .alpha(if (item.done) 0.6f else 1f),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }

@@ -1,46 +1,27 @@
 package com.juhao.classtool.ui.schedule
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
-import android.os.Build
-import android.view.RoundedCorner
-import android.view.WindowManager
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.wear.compose.material3.*
-import com.composables.icons.materialsymbols.MaterialSymbols
-import com.composables.icons.materialsymbols.rounded.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.wear.compose.material3.lazy.ResponsiveTransformationSpec
-import androidx.wear.compose.material3.lazy.TransformationSpec
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.*
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
-import com.juhao.classtool.datastore.ScreenShapeMode
 import com.juhao.classtool.datastore.Weekday
 import java.time.LocalDate
 import java.time.LocalTime
 import androidx.core.graphics.toColorInt
-
-enum class ScreenShape { ROUND, SQUARE }
-
-val LocalScreenShape = staticCompositionLocalOf { ScreenShape.ROUND }
 
 fun weekdayLabel(weekday: Weekday): String = when (weekday) {
     Weekday.MONDAY -> "周一"
@@ -105,46 +86,6 @@ fun todayWeekday(): Weekday = when (LocalDate.now().dayOfWeek.value) {
     5 -> Weekday.FRIDAY
     6 -> Weekday.SATURDAY
     else -> Weekday.SUNDAY
-}
-
-@Composable
-fun rememberIsSquareScreen(mode: ScreenShapeMode): Boolean {
-    if (mode == ScreenShapeMode.FORCE_SQUARE) return true
-    if (mode == ScreenShapeMode.FORCE_ROUND) return false
-    val context = LocalContext.current
-    return remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            runCatching {
-                val display = context.display
-                val modeInfo = display.mode
-                val shortSide = minOf(modeInfo.physicalWidth, modeInfo.physicalHeight).toFloat()
-                if (shortSide <= 0f) return@runCatching false
-
-                val corner = display.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT)
-                    ?: return@runCatching true
-
-                val ratio = corner.radius / shortSide
-                val isRoundWatch = ratio >= 0.35f
-                !isRoundWatch
-            }.getOrDefault(false)
-        } else {
-            false
-        }
-    }
-}
-
-@Composable
-fun rememberAdaptiveTransformationSpec(square: Boolean): TransformationSpec {
-    return if (square) {
-        rememberTransformationSpec(
-            ResponsiveTransformationSpec.smallScreen(
-                minTransitionAreaHeightFraction = 0f,
-                maxTransitionAreaHeightFraction = 0f,
-            )
-        )
-    } else {
-        rememberTransformationSpec()
-    }
 }
 
 val paletteColors = listOf(
@@ -253,35 +194,5 @@ fun CustomPresetDialog(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun KeepScreenOn(enabled: Boolean) {
-    val context = LocalContext.current
-    val activity = context.findActivity()
-
-    DisposableEffect(enabled, activity) {
-        if (activity == null) {
-            onDispose { }
-        } else {
-            val window = activity.window
-            if (enabled) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            } else {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            }
-            onDispose {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            }
-        }
-    }
-}
-
-private tailrec fun Context.findActivity(): Activity? {
-    return when (this) {
-        is Activity -> this
-        is ContextWrapper -> baseContext.findActivity()
-        else -> null
     }
 }

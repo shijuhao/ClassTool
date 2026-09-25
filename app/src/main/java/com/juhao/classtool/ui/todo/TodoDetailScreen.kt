@@ -1,4 +1,4 @@
-package com.juhao.classtool.ui.countdown
+package com.juhao.classtool.ui.todo
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -14,30 +14,30 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
-import com.juhao.classtool.datastore.CountdownDataStore
-import com.juhao.classtool.datastore.CountdownDay
+import com.juhao.classtool.datastore.TodoDataStore
+import com.juhao.classtool.datastore.TodoItem
 import com.juhao.classtool.utils.*
 import kotlinx.coroutines.launch
 
 @Composable
-fun CountdownDetailScreen(
-    dayId: Long,
+fun TodoDetailScreen(
+    itemId: Long,
     onEdit: () -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val store = remember { CountdownDataStore(context) }
+    val store = remember { TodoDataStore(context) }
 
     val listState = rememberTransformingLazyColumnState()
     val square = LocalScreenShape.current == ScreenShape.SQUARE
     val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
-    var day by remember { mutableStateOf<CountdownDay?>(null) }
+    var item by remember { mutableStateOf<TodoItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    LaunchedEffect(dayId) {
-        day = store.getDay(dayId)
+    LaunchedEffect(itemId) {
+        item = store.getItem(itemId)
     }
 
     ScreenScaffold(scrollState = listState) { contentPadding ->
@@ -51,13 +51,12 @@ fun CountdownDetailScreen(
                             ListHeaderDefaults.minimumTopListContentPadding
                         ),
                     transformation = SurfaceTransformation(transformationSpec)
-                ) { Text(day?.title ?: "倒计日") }
+                ) { Text(item?.title ?: "待办") }
             }
 
-            val current = day
+            val current = item
             if (current != null) {
                 item {
-                    val remaining = daysUntil(current.dateMillis)
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -71,15 +70,7 @@ fun CountdownDetailScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Text(
-                                text = formatDate(current.dateMillis),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
                             if (current.note.isNotBlank()) {
-                                Spacer(Modifier.height(4.dp))
                                 Text(
                                     text = current.note,
                                     style = MaterialTheme.typography.bodyMedium,
@@ -87,19 +78,50 @@ fun CountdownDetailScreen(
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth()
                                 )
+                                Spacer(Modifier.height(6.dp))
                             }
-                            Spacer(Modifier.height(6.dp))
                             Text(
-                                text = countdownLabel(remaining),
+                                text = if (current.done) "已完成" else "待完成",
                                 style = MaterialTheme.typography.titleLarge.copy(
                                     fontWeight = FontWeight.Bold
                                 ),
-                                color = MaterialTheme.colorScheme.primary,
+                                color = if (current.done) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
+                }
+
+                item {
+                    FilledTonalButton(
+                        onClick = {
+                            scope.launch {
+                                store.toggleDone(itemId)
+                                item = store.getItem(itemId)
+                            }
+                        },
+                        label = { Text(if (current.done) "标记未完成" else "标记完成") },
+                        icon = {
+                            Icon(
+                                imageVector = if (current.done) {
+                                    MaterialSymbols.Rounded.Radio_button_unchecked
+                                } else {
+                                    MaterialSymbols.Rounded.Check_circle
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec),
+                        transformation = SurfaceTransformation(transformationSpec)
+                    )
                 }
 
                 item {
@@ -144,8 +166,8 @@ fun CountdownDetailScreen(
     AlertDialog(
         visible = showDeleteConfirm,
         onDismissRequest = { showDeleteConfirm = false },
-        title = { Text("删除倒计日") },
-        text = { Text("确定要删除「${day?.title ?: ""}」吗？此操作无法撤销。") },
+        title = { Text("删除待办") },
+        text = { Text("确定要删除「${item?.title ?: ""}」吗？此操作无法撤销。") },
         edgeButton = {
             AlertDialogDefaults.EdgeButton(
                 onClick = { showDeleteConfirm = false },
@@ -163,7 +185,7 @@ fun CountdownDetailScreen(
                 onClick = {
                     showDeleteConfirm = false
                     scope.launch {
-                        store.delete(dayId)
+                        store.delete(itemId)
                         onBack()
                     }
                 },
