@@ -72,10 +72,12 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
     )
 
     var showDialog by remember { mutableStateOf(false) }
-    var editMode by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
     var newEventWeekday by remember { mutableStateOf(today) }
     var refreshKey by remember { mutableIntStateOf(0) }
+
+    var actionEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
+    var deleteEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
 
     val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
         value = store.getSchedule().events
@@ -109,10 +111,13 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
             breakDuration = breakDuration,
             allEvents = schedule,
             onDismiss = { showDialog = false },
-            onConfirm = { event ->
+            onConfirm = { events ->
                 scope.launch {
-                    val result = if (editingEvent == null) store.addEvent(event)
-                    else store.updateEvent(event)
+                    val result = if (editingEvent == null) {
+                        store.addEvents(events)
+                    } else {
+                        store.updateEvent(events.first())
+                    }
                     if (result.valid) {
                         refreshKey++
                         showDialog = false
@@ -124,32 +129,114 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
         return
     }
 
-    var pendingDelete by remember { mutableStateOf<ScheduleEvent?>(null) }
-    pendingDelete?.let { target ->
+    actionEvent?.let { target ->
         AlertDialog(
             visible = true,
-            onDismissRequest = { pendingDelete = null },
-            title = { Text("删除事件") },
-            confirmButton = {
-                AlertDialogDefaults.ConfirmButton(
+            onDismissRequest = { actionEvent = null },
+            title = { Text(eventDisplayName(target)) },
+            text = {
+                Text(
+                    text = "${target.startTime} - ${target.endTime}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            edgeButton = {
+                AlertDialogDefaults.EdgeButton(
+                    onClick = { actionEvent = null },
+                    content = {
+                        Icon(
+                            painter = painterResource(R.drawable.close),
+                            contentDescription = null
+                        )
+                    },
+                )
+            },
+        ) {
+            item {
+                FilledTonalButton(
                     onClick = {
+                        actionEvent = null
+                        editingEvent = target
+                        showDialog = true
+                    },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.edit),
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                    },
+                    label = { Text("编辑") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        actionEvent = null
+                        deleteEvent = target
+                    },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.delete),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                    },
+                    label = { Text("删除") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+
+    deleteEvent?.let { target ->
+        AlertDialog(
+            visible = true,
+            onDismissRequest = { deleteEvent = null },
+            title = { Text("删除事件") },
+            text = { Text("确定要删除「${eventDisplayName(target)}」吗？此操作无法撤销。") },
+            edgeButton = {
+                AlertDialogDefaults.EdgeButton(
+                    onClick = { deleteEvent = null },
+                    content = {
+                        Icon(
+                            painter = painterResource(R.drawable.close),
+                            contentDescription = null
+                        )
+                    },
+                )
+            },
+        ) {
+            item {
+                Button(
+                    onClick = {
+                        deleteEvent = null
                         scope.launch {
                             store.removeEvent(target.id)
                             refreshKey++
                         }
-                        pendingDelete = null
-                    }
-                )
-            },
-            dismissButton = {
-                AlertDialogDefaults.DismissButton(onClick = { pendingDelete = null })
-            }
-        ) {
-            item { Text(eventDisplayName(target)) }
-            item {
-                Text(
-                    text = "${target.startTime} - ${target.endTime}",
-                    style = MaterialTheme.typography.bodySmall
+                    },
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.delete),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                    },
+                    label = { Text("删除") },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
@@ -166,7 +253,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
             val dayEvents = schedule
                 .filter { it.enabled && (isAllPage || weekday in it.weekdays) }
                 .sortedWith(compareBy({ it.startTime }, { it.weekdays.firstOrNull()?.ordinal ?: 0 }))
-                .let { if (editMode) it else it.filterNot { e -> e.type == ScheduleEventType.BREAK } }
+                .filterNot { e -> e.type == ScheduleEventType.BREAK }
 
             ScreenScaffold(scrollState = listState) { contentPadding ->
                 TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
@@ -183,47 +270,25 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                     }
 
                     item {
-                        ButtonGroup(
+                        FilledTonalButton(
+                            onClick = {
+                                editingEvent = null
+                                newEventWeekday = weekday ?: today
+                                showDialog = true
+                            },
+                            transformation = SurfaceTransformation(transformationSpec),
                             modifier = Modifier
-                                .graphicsLayer {
-                                    with(transformationSpec) {
-                                        applyContainerTransformation(scrollProgress)
-                                    }
-                                }
-                                .transformedHeight(this, transformationSpec)
-                                .minimumVerticalContentPadding(
-                                    ButtonDefaults.minimumVerticalListContentPadding
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec),
+                            label = { Text("新增事件") },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.add),
+                                    contentDescription = "新增事件",
+                                    modifier = Modifier.size(ButtonDefaults.IconSize)
                                 )
-                        ) {
-                            FilledTonalIconButton(
-                                onClick = { editMode = !editMode },
-                                modifier = Modifier.weight(1f),
-                                content = {
-                                    Icon(
-                                        painter = painterResource(
-                                            if (editMode) R.drawable.close else R.drawable.edit
-                                        ),
-                                        contentDescription = "编辑",
-                                        modifier = Modifier.size(ButtonDefaults.IconSize)
-                                    )
-                                }
-                            )
-                            FilledIconButton(
-                                onClick = {
-                                    editingEvent = null
-                                    newEventWeekday = weekday ?: today
-                                    showDialog = true
-                                },
-                                content = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.add),
-                                        contentDescription = "新增事件",
-                                        modifier = Modifier.size(ButtonDefaults.IconSize)
-                                    )
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                            }
+                        )
                     }
 
                     items(count = dayEvents.size, key = { dayEvents[it].id }) { index ->
@@ -243,15 +308,12 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                             transformation = SurfaceTransformation(transformationSpec),
                             event = event,
                             highlighted = highlighted,
-                            editMode = editMode,
                             showWeekdayBadge = isAllPage,
                             onClick = {
-                                if (editMode) {
-                                    editingEvent = event
-                                    showDialog = true
-                                }
+                                editingEvent = event
+                                showDialog = true
                             },
-                            onRequestDelete = { pendingDelete = event }
+                            onLongClick = { actionEvent = event }
                         )
                     }
                 }
@@ -266,12 +328,10 @@ fun ScheduleEventCard(
     transformation: SurfaceTransformation? = null,
     event: ScheduleEvent,
     highlighted: Boolean = false,
-    editMode: Boolean = false,
     showWeekdayBadge: Boolean = false,
     onClick: () -> Unit = {},
-    onRequestDelete: () -> Unit = {}
+    onLongClick: () -> Unit = {}
 ) {
-    val scope = rememberCoroutineScope()
     val dotColor = event.courseColor?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
 
     val containerColor = if (highlighted) MaterialTheme.colorScheme.primaryContainer
@@ -279,66 +339,40 @@ fun ScheduleEventCard(
     val contentColor = if (highlighted) MaterialTheme.colorScheme.onPrimaryContainer
     else MaterialTheme.colorScheme.onSurface
 
-    val content: @Composable () -> Unit = {
-        FilledTonalButton(
-            onClick = onClick,
-            transformation = transformation,
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = containerColor,
-                contentColor = contentColor
-            ),
-            label = { Text(eventDisplayName(event)) },
-            secondaryLabel = {
-                val time = "${event.startTime} - ${event.endTime}"
-                Text(
-                    if (showWeekdayBadge) "$time  ${weekdayScopeLabel(event.weekdays)}"
-                    else time
-                )
-            },
-            icon = {
-                Box(
-                    Modifier
-                        .size(12.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(dotColor)
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (highlighted) Modifier.border(
-                        2.dp,
-                        MaterialTheme.colorScheme.primary,
-                        RoundedCornerShape(50.dp)
-                    ) else Modifier
-                )
-        )
-    }
-
-    if (editMode) {
-        val revealState = rememberRevealState()
-        SwipeToReveal(
-            primaryAction = {
-                PrimaryActionButton(
-                    onClick = {
-                        scope.launch { revealState.animateTo(RevealValue.Covered) }
-                        onRequestDelete()
-                    },
-                    icon = { Icon(painterResource(R.drawable.delete), contentDescription = null) },
-                    text = { Text("删除") },
-                    modifier = Modifier.height(SwipeToRevealDefaults.LargeActionButtonHeight),
-                )
-            },
-            revealState = revealState,
-            onSwipePrimaryAction = {
-                scope.launch { revealState.animateTo(RevealValue.Covered) }
-                onRequestDelete()
-            },
-            modifier = modifier
-        ) { content() }
-    } else {
-        Box(modifier = modifier) { content() }
-    }
+    FilledTonalButton(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        transformation = transformation,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        label = { Text(eventDisplayName(event)) },
+        secondaryLabel = {
+            val time = "${event.startTime} - ${event.endTime}"
+            Text(
+                if (showWeekdayBadge) "$time  ${weekdayScopeLabel(event.weekdays)}"
+                else time
+            )
+        },
+        icon = {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(dotColor)
+            )
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (highlighted) Modifier.border(
+                    2.dp,
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(50.dp)
+                ) else Modifier
+            )
+    )
 }
 
 @Composable
@@ -350,7 +384,7 @@ private fun EventEditDialog(
     breakDuration: Int,
     allEvents: List<ScheduleEvent>,
     onDismiss: () -> Unit,
-    onConfirm: (ScheduleEvent) -> Unit
+    onConfirm: (List<ScheduleEvent>) -> Unit
 ) {
     fun durationFor(t: ScheduleEventType) =
         if (t == ScheduleEventType.BREAK) breakDuration else classDuration
@@ -434,26 +468,48 @@ private fun EventEditDialog(
             AlertDialogDefaults.ConfirmButton(
                 onClick = {
                     if (conflict || selectedDays.isEmpty()) return@ConfirmButton
-                    onConfirm(
-                        ScheduleEvent(
-                            id = existing?.id ?: UUID.randomUUID().toString(),
-                            weekdays = selectedDays,
-                            startTime = startTime,
-                            endTime = endTime,
-                            type = type,
-                            courseName = when (type) {
-                                ScheduleEventType.CLASS -> existing?.courseName
-                                ScheduleEventType.ACTIVITY -> name.ifBlank { null }
-                                ScheduleEventType.BREAK -> null
-                            },
-                            courseColor = when (type) {
-                                ScheduleEventType.CLASS -> existing?.courseColor
-                                ScheduleEventType.ACTIVITY -> color
-                                ScheduleEventType.BREAK -> null
-                            },
-                            enabled = existing?.enabled ?: true
+
+                    val resolvedName = when (type) {
+                        ScheduleEventType.CLASS -> existing?.courseName
+                        ScheduleEventType.ACTIVITY -> name.ifBlank { null }
+                        ScheduleEventType.BREAK -> null
+                    }
+                    val resolvedColor = when (type) {
+                        ScheduleEventType.CLASS -> existing?.courseColor
+                        ScheduleEventType.ACTIVITY -> color
+                        ScheduleEventType.BREAK -> null
+                    }
+
+                    if (existing != null) {
+                        onConfirm(
+                            listOf(
+                                existing.copy(
+                                    weekdays = selectedDays,
+                                    startTime = startTime,
+                                    endTime = endTime,
+                                    type = type,
+                                    courseName = resolvedName,
+                                    courseColor = resolvedColor
+                                )
+                            )
                         )
-                    )
+                    } else {
+                        val events = selectedDays
+                            .sortedBy { it.ordinal }
+                            .map { day ->
+                                ScheduleEvent(
+                                    id = UUID.randomUUID().toString(),
+                                    weekdays = setOf(day),
+                                    startTime = startTime,
+                                    endTime = endTime,
+                                    type = type,
+                                    courseName = resolvedName,
+                                    courseColor = resolvedColor,
+                                    enabled = true
+                                )
+                            }
+                        onConfirm(events)
+                    }
                 }
             )
         },

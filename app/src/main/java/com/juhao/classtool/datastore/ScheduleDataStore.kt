@@ -216,16 +216,26 @@ class ScheduleDataStore(private val context: Context) {
     }
 
     suspend fun addEvent(event: ScheduleEvent): ScheduleValidationResult {
-        val current = getSchedule()
-        val conflict = ScheduleValidator.findConflict(current.events, event)
-        if (!conflict.valid) return conflict
+        return addEvents(listOf(event))
+    }
 
-        val updated = current.copy(events = current.events + event)
-        val full = ScheduleValidator.validateSchedule(updated)
+    suspend fun addEvents(events: List<ScheduleEvent>): ScheduleValidationResult {
+        if (events.isEmpty()) return ScheduleValidationResult(true)
+
+        val current = getSchedule()
+        var working = current
+
+        for (event in events) {
+            val conflict = ScheduleValidator.findConflict(working.events, event)
+            if (!conflict.valid) return conflict
+            working = working.copy(events = working.events + event)
+        }
+
+        val full = ScheduleValidator.validateSchedule(working)
         if (!full.valid) return full
 
         dataStore.edit { preferences ->
-            preferences[scheduleKey] = json.encodeToString(updated)
+            preferences[scheduleKey] = json.encodeToString(working)
         }
         return ScheduleValidationResult(true)
     }
