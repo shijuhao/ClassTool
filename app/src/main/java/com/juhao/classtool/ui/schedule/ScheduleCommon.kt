@@ -6,7 +6,6 @@ import android.content.ContextWrapper
 import android.os.Build
 import android.view.RoundedCorner
 import android.view.WindowManager
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -19,18 +18,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.wear.compose.material3.*
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import com.juhao.classtool.R
 import androidx.wear.compose.material3.lazy.ResponsiveTransformationSpec
 import androidx.wear.compose.material3.lazy.TransformationSpec
-import androidx.wear.compose.material3.lazy.TransformationVariableSpec
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
@@ -244,7 +242,7 @@ fun CustomPresetDialog(
                         ) {
                             if (selected) {
                                 Icon(
-                                    painter = painterResource(R.drawable.check),
+                                    imageVector = MaterialSymbols.Rounded.Check,
                                     contentDescription = null,
                                     tint = contrastColorFor(hex),
                                     modifier = Modifier.size(18.dp)

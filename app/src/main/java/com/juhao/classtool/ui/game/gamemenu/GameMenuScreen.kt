@@ -3,15 +3,14 @@ package com.juhao.classtool.ui.game.gamemenu
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.ui.schedule.*
 import com.juhao.classtool.key.*
-import com.juhao.classtool.R
 
 @Composable
 fun GameMenu(
@@ -47,7 +46,7 @@ fun GameMenu(
                     secondaryLabel = { Text("变绿后尽快点击") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.hourglass),
+                            imageVector = MaterialSymbols.Rounded.Hourglass,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -63,7 +62,7 @@ fun GameMenu(
                     secondaryLabel = { Text("1-6 点随机") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.casino),
+                            imageVector = MaterialSymbols.Rounded.Casino,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -79,7 +78,7 @@ fun GameMenu(
                     secondaryLabel = { Text("看看是在正面还是背面？") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.casino),
+                            imageVector = MaterialSymbols.Rounded.Casino,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )

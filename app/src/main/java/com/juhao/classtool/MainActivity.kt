@@ -13,8 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -27,6 +25,9 @@ import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
+import com.composables.icons.materialsymbols.roundedfilled.Gamepad
 
 import com.juhao.classtool.key.*
 import com.juhao.classtool.datastore.*
@@ -45,6 +46,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     override fun attachBaseContext(newBase: Context) {
@@ -95,7 +97,6 @@ fun WearApp() {
     val isSquare = rememberIsSquareScreen(screenShapeMode)
     val screenShape = if (isSquare) ScreenShape.SQUARE else ScreenShape.ROUND
 
-    val uiScale by settingsDataStore.uiScaleFlow.collectAsState(initial = 1.0f)
     val dynamicThemeEnabled by settingsDataStore.dynamicThemeFlow.collectAsState(initial = false)
     var currentEventColor by remember { mutableStateOf<Color?>(null) }
 
@@ -140,7 +141,7 @@ fun WearApp() {
                     ?.coerceAtLeast(1L)
                     ?: (86400L - nowSecLong).coerceAtLeast(60L)
 
-                delay(sleepSec * 1000L)
+                delay((sleepSec * 1000L).milliseconds)
             }
         }
     }
@@ -384,7 +385,7 @@ fun MainScreen(
                     label = { Text("时间表") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.access_time),
+                            imageVector = MaterialSymbols.Rounded.Schedule,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -400,7 +401,7 @@ fun MainScreen(
                     label = { Text("课程表") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.date_range),
+                            imageVector = MaterialSymbols.Rounded.Date_range,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -416,7 +417,7 @@ fun MainScreen(
                     label = { Text("倒计日") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.event),
+                            imageVector = MaterialSymbols.Rounded.Event,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -432,7 +433,7 @@ fun MainScreen(
                     label = { Text("工具") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.build),
+                            imageVector = MaterialSymbols.Rounded.Handyman,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -448,7 +449,7 @@ fun MainScreen(
                     label = { Text("小游戏") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.toys),
+                            imageVector = MaterialSymbols.RoundedFilled.Gamepad,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -464,7 +465,7 @@ fun MainScreen(
                     label = { Text("设置") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.settings),
+                            imageVector = MaterialSymbols.Rounded.Settings,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -480,7 +481,7 @@ fun MainScreen(
                     label = { Text("关于") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.info),
+                            imageVector = MaterialSymbols.Rounded.Info,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )

@@ -1,12 +1,12 @@
 package com.juhao.classtool.ui.countdown
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.SolidColor
@@ -14,7 +14,8 @@ import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
-import com.juhao.classtool.R
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.CountdownDataStore
 import com.juhao.classtool.datastore.CountdownDay
 import com.juhao.classtool.ui.schedule.LocalScreenShape
@@ -61,6 +62,9 @@ fun CountdownEditScreen(
     }
 
     if (showDatePicker) {
+        BackHandler {
+            showDatePicker = false
+        }
         DatePicker(
             initialDate = date,
             onDatePicked = {
@@ -139,7 +143,7 @@ fun CountdownEditScreen(
                     secondaryLabel = { Text(date.format(formatter)) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.date_range),
+                            imageVector = MaterialSymbols.Rounded.Date_range,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -172,7 +176,7 @@ fun CountdownEditScreen(
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.save),
+                            imageVector = MaterialSymbols.Rounded.Save,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )

@@ -27,6 +27,7 @@ import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.SettingsDataStore
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val PREP_BELL_SECONDS = 180
 private const val FINAL_SPRINT_SECONDS = 180
@@ -101,7 +102,7 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
         prepBellEnabled = settingsStore.getPrepBell()
         while (true) {
             nowSecondOfDay = currentSecondOfDay()
-            delay(1000L)
+            delay(1000L.milliseconds)
         }
     }
 
@@ -218,8 +219,7 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
 
     ScreenScaffold(scrollState = listState) { contentPadding ->
         TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
-            val ev = displayEvent
-            if (ev != null) {
+            if (displayEvent != null) {
                 item {
                     ListHeader(
                         modifier = Modifier
@@ -231,7 +231,7 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
                         transformation = SurfaceTransformation(transformationSpec)
                     ) {
                         Text(
-                            text = eventDisplayName(ev),
+                            text = eventDisplayName(displayEvent),
                             style = TextStyle(
                                 fontSize = displaySize.sp,
                                 lineHeight = (displaySize * 1.2f).sp,
@@ -253,7 +253,7 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
 
                 item {
                     Text(
-                        text = if (isPrep) "即将开始" else "${ev.startTime} - ${ev.endTime}",
+                        text = if (isPrep) "即将开始" else "${displayEvent.startTime} - ${displayEvent.endTime}",
                         style = TextStyle(
                             fontSize = titleSize.sp,
                             lineHeight = (titleSize * 1.2f).sp
@@ -374,9 +374,6 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
             ) { index ->
                 val event = upcomingEvents[index]
                 ScheduleEventCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec),
                     event = event
                 )

@@ -11,14 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
-import com.juhao.classtool.R
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.Schedule
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleValidator
@@ -160,7 +160,7 @@ fun BackupRestoreScreen() {
                     secondaryLabel = { Text("复制 JSON 到剪贴板") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.content_copy),
+                            imageVector = MaterialSymbols.Rounded.Content_copy,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
@@ -247,7 +247,7 @@ fun BackupRestoreScreen() {
                     secondaryLabel = { Text("从剪贴板读取 JSON") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.content_paste),
+                            imageVector = MaterialSymbols.Rounded.Content_paste,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
@@ -266,7 +266,7 @@ fun BackupRestoreScreen() {
                     secondaryLabel = { Text("覆盖当前日程") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.check),
+                            imageVector = MaterialSymbols.Rounded.Check,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )

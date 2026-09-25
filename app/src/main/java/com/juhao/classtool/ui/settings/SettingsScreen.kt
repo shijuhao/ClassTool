@@ -5,13 +5,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
-import com.juhao.classtool.R
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScreenShapeMode
 import com.juhao.classtool.datastore.SettingsDataStore
 import com.juhao.classtool.datastore.TestModeState
@@ -84,7 +84,7 @@ fun SettingsScreen(
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.notifications),
+                            imageVector = MaterialSymbols.Rounded.Notifications,
                             contentDescription = null
                         )
                     },
@@ -115,7 +115,7 @@ fun SettingsScreen(
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.info),
+                            imageVector = MaterialSymbols.Rounded.Info,
                             contentDescription = null
                         )
                     },
@@ -146,7 +146,7 @@ fun SettingsScreen(
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.lightbulb),
+                            imageVector = MaterialSymbols.Rounded.Lightbulb,
                             contentDescription = null
                         )
                     },
@@ -177,7 +177,7 @@ fun SettingsScreen(
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.palette),
+                            imageVector = MaterialSymbols.Rounded.Palette,
                             contentDescription = null
                         )
                     },
@@ -215,7 +215,7 @@ fun SettingsScreen(
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.watch),
+                            imageVector = MaterialSymbols.Rounded.Watch,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
@@ -310,8 +310,9 @@ fun SettingsScreen(
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.settings),
-                            contentDescription = null                        )
+                            imageVector = MaterialSymbols.Rounded.Developer_mode,
+                            contentDescription = null
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -327,7 +328,7 @@ fun SettingsScreen(
                     secondaryLabel = { Text("复制 / 解析 JSON") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.backup),
+                            imageVector = MaterialSymbols.Rounded.Backup,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
@@ -366,7 +367,7 @@ private fun SliderSettingCard(
             Slider(
                 value = currentIndex,
                 onValueChange = { index: Int -> onChange(index) },
-                valueProgression = 0..(stepCount - 1),
+                valueProgression = 0..<stepCount,
                 modifier = Modifier.fillMaxWidth(),
                 segmented = true
             )

@@ -13,8 +13,9 @@ import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.ui.schedule.*
 import com.juhao.classtool.R
 import com.juhao.classtool.utils.getAppVersionInfo
@@ -75,7 +76,7 @@ fun AboutScreen() {
                     secondaryLabel = { Text(context.getAppVersionInfo().versionName) },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.info),
+                            imageVector = MaterialSymbols.Rounded.Info,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -91,7 +92,7 @@ fun AboutScreen() {
                     secondaryLabel = { Text("JuHao") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.person),
+                            imageVector = MaterialSymbols.Rounded.Person,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
@@ -109,7 +110,7 @@ fun AboutScreen() {
                     secondaryLabel = { Text("https://github.com/shijuhao/classtool") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.code),
+                            imageVector = MaterialSymbols.Rounded.Code,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )

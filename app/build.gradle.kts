@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    compileSdk = 36
+    compileSdk = 37
 
     namespace = "com.juhao.classtool"
 
@@ -41,11 +41,6 @@ android {
             isIncludeAndroidResources = true
         }
     }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-        }
-    }
     buildFeatures {
         compose = true
     }
@@ -76,15 +71,18 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
 
-    val composeBom = platform(libs.androidx.compose.bom)
-
-    implementation(composeBom)
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
 
     implementation(libs.wear.compose.material)
-
     implementation(libs.wear.compose.foundation)
     implementation(libs.androidx.material.icons.core)
 
@@ -95,11 +93,14 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
-    
+
     implementation(libs.datastore.preferences)
     implementation(libs.datastore)
 
     implementation(libs.androidx.ui.test.manifest)
+
+    implementation(libs.material.symbols.rounded)
+    implementation(libs.material.symbols.rounded.filled)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
@@ -112,10 +113,6 @@ dependencies {
 
     androidTestImplementation(libs.test.ext.junit)
     androidTestImplementation(libs.test.espresso.core)
-    androidTestImplementation(libs.compose.ui.test.junit4)
-    androidTestImplementation(composeBom)
 
     debugImplementation(libs.compose.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
-    debugImplementation(composeBom)
 }

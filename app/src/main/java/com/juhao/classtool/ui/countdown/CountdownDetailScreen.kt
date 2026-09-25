@@ -5,7 +5,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -13,7 +12,8 @@ import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
-import com.juhao.classtool.R
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.CountdownDataStore
 import com.juhao.classtool.datastore.CountdownDay
 import com.juhao.classtool.ui.schedule.LocalScreenShape
@@ -110,7 +110,7 @@ fun CountdownDetailScreen(
                         label = { Text("编辑") },
                         icon = {
                             Icon(
-                                painter = painterResource(R.drawable.edit),
+                                imageVector = MaterialSymbols.Rounded.Edit,
                                 contentDescription = null,
                                 modifier = Modifier.size(ButtonDefaults.IconSize),
                             )
@@ -128,7 +128,7 @@ fun CountdownDetailScreen(
                         label = { Text("删除") },
                         icon = {
                             Icon(
-                                painter = painterResource(R.drawable.delete),
+                                imageVector = MaterialSymbols.Rounded.Delete,
                                 contentDescription = null,
                                 modifier = Modifier.size(ButtonDefaults.IconSize),
                             )
@@ -143,49 +143,47 @@ fun CountdownDetailScreen(
         }
     }
 
-    if (showDeleteConfirm) {
-        AlertDialog(
-            visible = showDeleteConfirm,
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("删除倒计日") },
-            text = { Text("确定要删除「${day?.title ?: ""}」吗？此操作无法撤销。") },
-            edgeButton = {
-                AlertDialogDefaults.EdgeButton(
-                    onClick = { showDeleteConfirm = false },
-                    content = {
-                        Icon(
-                            painter = painterResource(R.drawable.close),
-                            contentDescription = null
-                        )
-                    },
-                )
-            },
-        ) {
-            item {
-                Button(
-                    onClick = {
-                        showDeleteConfirm = false
-                        scope.launch {
-                            store.delete(dayId)
-                            onBack()
-                        }
-                    },
-                    icon = {
-                        Icon(
-                            painter = painterResource(R.drawable.delete),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(ButtonDefaults.IconSize)
-                        )
-                    },
-                    label = { Text("删除") },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+    AlertDialog(
+        visible = showDeleteConfirm,
+        onDismissRequest = { showDeleteConfirm = false },
+        title = { Text("删除倒计日") },
+        text = { Text("确定要删除「${day?.title ?: ""}」吗？此操作无法撤销。") },
+        edgeButton = {
+            AlertDialogDefaults.EdgeButton(
+                onClick = { showDeleteConfirm = false },
+                content = {
+                    Icon(
+                        imageVector = MaterialSymbols.Rounded.Close,
+                        contentDescription = null
+                    )
+                },
+            )
+        },
+    ) {
+        item {
+            Button(
+                onClick = {
+                    showDeleteConfirm = false
+                    scope.launch {
+                        store.delete(dayId)
+                        onBack()
+                    }
+                },
+                icon = {
+                    Icon(
+                        imageVector = MaterialSymbols.Rounded.Delete,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                    )
+                },
+                label = { Text("删除") },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

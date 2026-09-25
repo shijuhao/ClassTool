@@ -10,9 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -21,7 +19,8 @@ import androidx.wear.compose.foundation.pager.HorizontalPager
 import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
-import com.juhao.classtool.R
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
@@ -79,7 +78,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
     var actionEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
     var deleteEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
 
-    val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
+    val schedule by produceState(initialValue = emptyList(), refreshKey) {
         value = store.getSchedule().events
     }
 
@@ -145,7 +144,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                     onClick = { actionEvent = null },
                     content = {
                         Icon(
-                            painter = painterResource(R.drawable.close),
+                            imageVector = MaterialSymbols.Rounded.Close,
                             contentDescription = null
                         )
                     },
@@ -161,7 +160,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.edit),
+                            imageVector = MaterialSymbols.Rounded.Edit,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
@@ -179,7 +178,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.delete),
+                            imageVector = MaterialSymbols.Rounded.Delete,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
@@ -207,7 +206,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                     onClick = { deleteEvent = null },
                     content = {
                         Icon(
-                            painter = painterResource(R.drawable.close),
+                            imageVector = MaterialSymbols.Rounded.Close,
                             contentDescription = null
                         )
                     },
@@ -225,7 +224,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                     },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.delete),
+                            imageVector = MaterialSymbols.Rounded.Delete,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
@@ -283,7 +282,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                             label = { Text("新增事件") },
                             icon = {
                                 Icon(
-                                    painter = painterResource(R.drawable.add),
+                                    imageVector = MaterialSymbols.Rounded.Add,
                                     contentDescription = "新增事件",
                                     modifier = Modifier.size(ButtonDefaults.IconSize)
                                 )
@@ -302,9 +301,6 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                                 nowMinutes in start until end
 
                         ScheduleEventCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec),
                             transformation = SurfaceTransformation(transformationSpec),
                             event = event,
                             highlighted = highlighted,
@@ -324,7 +320,6 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
 
 @Composable
 fun ScheduleEventCard(
-    modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
     event: ScheduleEvent,
     highlighted: Boolean = false,
@@ -578,7 +573,7 @@ private fun EventEditDialog(
                             selected = isCustom,
                             leadingIcon = {
                                 Icon(
-                                    painter = painterResource(R.drawable.edit),
+                                    imageVector = MaterialSymbols.Rounded.Edit,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp)
                                 )
@@ -742,7 +737,7 @@ private fun TimeButton(label: String, time: String, onClick: () -> Unit) {
         secondaryLabel = { Text(time) },
         icon = {
             Icon(
-                painter = painterResource(R.drawable.access_time),
+                imageVector = MaterialSymbols.Rounded.Schedule,
                 contentDescription = null,
                 modifier = Modifier.size(ButtonDefaults.IconSize)
             )

@@ -10,7 +10,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -18,9 +17,9 @@ import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.juhao.classtool.ui.schedule.*
-import com.juhao.classtool.R
 import kotlinx.coroutines.delay
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
 private enum class ReactionPhase { IDLE, WAITING, READY, RESULT, TOO_SOON }
 
@@ -32,12 +31,12 @@ fun ReactionScreen(modifier: Modifier = Modifier) {
     val haptic = LocalHapticFeedback.current
 
     var phase by remember { mutableStateOf(ReactionPhase.IDLE) }
-    var resultMs by remember { mutableStateOf(0L) }
-    var readyAt by remember { mutableStateOf(0L) }
+    var resultMs by remember { mutableLongStateOf(0L) }
+    var readyAt by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(phase) {
         if (phase == ReactionPhase.WAITING) {
-            delay(Random.nextLong(1500, 4000))
+            delay(Random.nextLong(1500, 4000).milliseconds)
             if (phase == ReactionPhase.WAITING) {
                 readyAt = System.currentTimeMillis()
                 phase = ReactionPhase.READY
@@ -50,7 +49,7 @@ fun ReactionScreen(modifier: Modifier = Modifier) {
         ReactionPhase.IDLE -> "点击开始"
         ReactionPhase.WAITING -> "等待变绿…"
         ReactionPhase.READY -> "点！"
-        ReactionPhase.RESULT -> "用时 ${resultMs} ms"
+        ReactionPhase.RESULT -> "用时 $resultMs ms"
         ReactionPhase.TOO_SOON -> "太早了！"
     }
 

@@ -9,7 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -17,7 +16,8 @@ import androidx.wear.compose.foundation.pager.HorizontalPager
 import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
-import com.juhao.classtool.R
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
@@ -58,7 +58,7 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
     )
 
     var refreshKey by remember { mutableIntStateOf(0) }
-    val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
+    val schedule by produceState(initialValue = emptyList(), refreshKey) {
         value = store.getSchedule().events
     }
 
@@ -254,7 +254,7 @@ private fun CourseEditDialog(
                     selected = customSelected,
                     leadingIcon = {
                         Icon(
-                            painter = painterResource(R.drawable.edit),
+                            imageVector = MaterialSymbols.Rounded.Edit,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp)
                         )
@@ -285,7 +285,7 @@ private fun CourseEditDialog(
                     label = { Text("清除课程") },
                     icon = {
                         Icon(
-                            painter = painterResource(R.drawable.close),
+                            imageVector = MaterialSymbols.Rounded.Close,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )

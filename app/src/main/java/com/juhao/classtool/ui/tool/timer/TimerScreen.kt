@@ -4,15 +4,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import com.composables.icons.materialsymbols.MaterialSymbols
+import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.ui.schedule.*
-import com.juhao.classtool.R
 import com.juhao.classtool.theme.AppCardDefaults
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -99,9 +98,7 @@ fun TimerScreen() {
                         modifier = Modifier.weight(1f),
                         content = {
                             Icon(
-                                painter = painterResource(
-                                    if (running) R.drawable.pause else R.drawable.play
-                                ),
+                                imageVector = if (running) MaterialSymbols.Rounded.Pause else MaterialSymbols.Rounded.Play_arrow,
                                 contentDescription = null,
                                 modifier = Modifier.size(ButtonDefaults.IconSize)
                             )
@@ -116,7 +113,7 @@ fun TimerScreen() {
                         enabled = !running,
                         content = {
                             Icon(
-                                painter = painterResource(R.drawable.refresh),
+                                imageVector = MaterialSymbols.Rounded.Refresh,
                                 contentDescription = null,
                                 modifier = Modifier.size(ButtonDefaults.IconSize)
                             )
