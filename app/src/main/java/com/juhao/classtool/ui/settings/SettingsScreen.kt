@@ -269,7 +269,7 @@ fun SettingsScreen(
                 val currentIndex = UI_SCALE_STEPS
                     .indexOfFirst { it >= uiScale - 0.001f }
                     .coerceAtLeast(0)
-
+            
                 SliderSettingCard(
                     modifier = Modifier.transformedHeight(this, transformationSpec),
                     title = "UI 缩放",
@@ -279,7 +279,10 @@ fun SettingsScreen(
                     stepCount = UI_SCALE_STEPS.size,
                     onChange = { index ->
                         val safeIndex = index.coerceIn(0, UI_SCALE_STEPS.lastIndex)
-                        scope.launch { store.setUiScale(UI_SCALE_STEPS[safeIndex]) }
+                        scope.launch {
+                            store.setUiScale(UI_SCALE_STEPS[safeIndex])
+                            (context as? android.app.Activity)?.recreate()
+                        }
                     }
                 )
             }

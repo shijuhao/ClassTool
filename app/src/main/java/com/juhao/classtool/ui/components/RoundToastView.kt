@@ -29,7 +29,7 @@ class RoundToastView @JvmOverloads constructor(
     private val borderColor = 0x33FFFFFF
     private val textColor = 0xFFFFFFFF.toInt()
 
-    private val textSizeVal = dp(13f)
+    private val textSizeVal = dp(15f)
     private val bgThickness = dp(24f)
     private val borderWidth = dp(0.8f)
     private val bottomMargin = dp(8f)

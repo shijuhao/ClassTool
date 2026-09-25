@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.Density
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -44,8 +44,19 @@ import com.juhao.classtool.ui.tool.toolmenu.ToolMenu
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        val scale = runBlocking {
+            SettingsDataStore(newBase.applicationContext).getUiScale()
+        }
+        val config = Configuration(newBase.resources.configuration).apply {
+            densityDpi = (newBase.resources.displayMetrics.densityDpi * scale).toInt()
+        }
+        super.attachBaseContext(newBase.createConfigurationContext(config))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -84,15 +95,9 @@ fun WearApp() {
     val isSquare = rememberIsSquareScreen(screenShapeMode)
     val screenShape = if (isSquare) ScreenShape.SQUARE else ScreenShape.ROUND
 
+    // Activity 已在 attachBaseContext 里全局缩放 densityDpi，
+    // 这里直接用 LocalDensity.current 即为缩放后的值，无需再手动 * uiScale。
     val uiScale by settingsDataStore.uiScaleFlow.collectAsState(initial = 1.0f)
-    val baseDensity = LocalDensity.current
-    val scaledDensity = remember(baseDensity, uiScale) {
-        Density(
-            density = baseDensity.density * uiScale,
-            fontScale = baseDensity.fontScale * uiScale
-        )
-    }
-
     val dynamicThemeEnabled by settingsDataStore.dynamicThemeFlow.collectAsState(initial = false)
     var currentEventColor by remember { mutableStateOf<Color?>(null) }
 
@@ -119,25 +124,25 @@ fun WearApp() {
 
                 val nowSecLong = nowSec.toLong()
 
-                    val nextBoundary = events
-                        .asSequence()
-                        .filter { it.enabled && today in it.weekdays }
-                        .flatMap { event ->
-                            sequenceOf(
-                                toMinutes(event.startTime)?.toLong()?.times(60L),
-                                toMinutes(event.endTime)?.toLong()?.times(60L)
-                            )
-                        }
-                        .filterNotNull()
-                        .filter { it > nowSecLong }
-                        .minOrNull()
-                    
-                    val sleepSec = nextBoundary
-                        ?.minus(nowSecLong)
-                        ?.coerceAtLeast(1L)
-                        ?: (86400L - nowSecLong).coerceAtLeast(60L)
-                    
-                    delay(sleepSec * 1000L)
+                val nextBoundary = events
+                    .asSequence()
+                    .filter { it.enabled && today in it.weekdays }
+                    .flatMap { event ->
+                        sequenceOf(
+                            toMinutes(event.startTime)?.toLong()?.times(60L),
+                            toMinutes(event.endTime)?.toLong()?.times(60L)
+                        )
+                    }
+                    .filterNotNull()
+                    .filter { it > nowSecLong }
+                    .minOrNull()
+
+                val sleepSec = nextBoundary
+                    ?.minus(nowSecLong)
+                    ?.coerceAtLeast(1L)
+                    ?: (86400L - nowSecLong).coerceAtLeast(60L)
+
+                delay(sleepSec * 1000L)
             }
         }
     }
@@ -214,18 +219,18 @@ fun WearApp() {
             }
         }
     }
-    
+
     var startupCountdownChecked by remember { mutableStateOf(false) }
     LaunchedEffect(testModeLoaded) {
         if (!testModeLoaded || startupCountdownChecked) return@LaunchedEffect
         startupCountdownChecked = true
-    
+
         val countdownStore = CountdownDataStore(context)
         val upcoming = countdownStore.getDays()
             .map { it to daysUntil(it.dateMillis) }
             .filter { (_, d) -> d in 0..5 }
             .sortedBy { (_, d) -> d }
-    
+
         if (upcoming.isNotEmpty()) {
             val (nearest, remain) = upcoming.first()
             val text = when (remain) {
@@ -246,14 +251,14 @@ fun WearApp() {
                         onChangePage = { backStack.add(it) }
                     )
                 }
-                
+
                 entry<EditScheduleNavScreen> {
                     EditScheduleScreen()
                 }
                 entry<CourseScheduleNavScreen> {
                     CourseScheduleScreen()
                 }
-                
+
                 entry<CountdownNavScreen> {
                     CountdownScreen(
                         onNavigate = { key -> backStack.add(key as NavKey) }
@@ -315,8 +320,7 @@ fun WearApp() {
 
     WearAppTheme(eventColor = themeEventColor) {
         CompositionLocalProvider(
-            LocalScreenShape provides screenShape,
-            LocalDensity provides scaledDensity
+            LocalScreenShape provides screenShape
         ) {
             AppScaffold {
                 val swipeDismissableSceneStrategy = rememberSwipeDismissableSceneStrategy<NavKey>()
@@ -407,7 +411,7 @@ fun MainScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
-            
+
             item {
                 FilledTonalButton(
                     onClick = { onChangePage(CountdownNavScreen) },
