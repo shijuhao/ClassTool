@@ -330,19 +330,10 @@ fun ScheduleEventCard(
 ) {
     val dotColor = event.courseColor?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
 
-    val containerColor = if (highlighted) MaterialTheme.colorScheme.primaryContainer
-    else MaterialTheme.colorScheme.surfaceContainerHigh
-    val contentColor = if (highlighted) MaterialTheme.colorScheme.onPrimaryContainer
-    else MaterialTheme.colorScheme.onSurface
-
     FilledTonalButton(
         onClick = onClick,
         onLongClick = onLongClick,
         transformation = transformation,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
         label = { Text(eventDisplayName(event)) },
         secondaryLabel = {
             val time = "${event.startTime} - ${event.endTime}"
@@ -364,7 +355,7 @@ fun ScheduleEventCard(
             .then(
                 if (highlighted) Modifier.border(
                     2.dp,
-                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.primaryContainer,
                     RoundedCornerShape(50.dp)
                 ) else Modifier
             )
@@ -702,13 +693,13 @@ private fun ActivityChip(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(
-                if (selected) MaterialTheme.colorScheme.primary
+                if (selected) MaterialTheme.colorScheme.primaryContainer
                 else MaterialTheme.colorScheme.surfaceContainerHigh
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
-        val tint = if (selected) MaterialTheme.colorScheme.onPrimary
+        val tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
         else MaterialTheme.colorScheme.onSurfaceVariant
 
         if (leadingIcon != null) {

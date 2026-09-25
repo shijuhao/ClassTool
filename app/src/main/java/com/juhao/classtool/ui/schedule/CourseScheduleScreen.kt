@@ -42,7 +42,7 @@ private val presetCourses = listOf(
     "信息" to "#26C6DA",
     "心理" to "#9CCC65",
     "通用技术" to "#D4E157",
-    "晚自习" to "#5C6BC0"
+    "自习" to "#00897B"
 )
 
 @Composable
@@ -306,7 +306,7 @@ private fun PresetChip(
     leadingIcon: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    val tint = if (selected) MaterialTheme.colorScheme.onPrimary
+    val tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
     else MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
@@ -314,7 +314,7 @@ private fun PresetChip(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(
-                if (selected) MaterialTheme.colorScheme.primary
+                if (selected) MaterialTheme.colorScheme.primaryContainer
                 else MaterialTheme.colorScheme.surfaceContainerHigh
             )
             .clickable(onClick = onClick)
