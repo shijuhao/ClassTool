@@ -46,7 +46,8 @@ data class ScheduleEvent(
     val type: ScheduleEventType,
     val courseName: String? = null,
     val courseColor: String? = null,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val urgent: Boolean = false
 )
 
 @Serializable

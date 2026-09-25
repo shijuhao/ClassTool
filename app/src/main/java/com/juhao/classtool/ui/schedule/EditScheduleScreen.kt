@@ -391,6 +391,7 @@ private fun EventEditDialog(
     }
     var selectedDays by remember { mutableStateOf(existing?.weekdays ?: setOf(weekday)) }
     var showCustomActivityDialog by remember { mutableStateOf(false) }
+    var urgent by remember { mutableStateOf(existing?.urgent ?: false) }
 
     LaunchedEffect(type) {
         if (!userEditedEnd) endTime = addMinutes(startTime, durationFor(type))
@@ -476,7 +477,8 @@ private fun EventEditDialog(
                                     endTime = endTime,
                                     type = type,
                                     courseName = resolvedName,
-                                    courseColor = resolvedColor
+                                    courseColor = resolvedColor,
+                                    urgent = urgent
                                 )
                             )
                         )
@@ -492,7 +494,8 @@ private fun EventEditDialog(
                                     type = type,
                                     courseName = resolvedName,
                                     courseColor = resolvedColor,
-                                    enabled = true
+                                    enabled = true,
+                                    urgent = urgent
                                 )
                             }
                         onConfirm(events)
@@ -625,6 +628,45 @@ private fun EventEditDialog(
                     }
                 }
             }
+        }
+
+        item {
+            SwitchButton(
+                checked = urgent,
+                onCheckedChange = { checked ->
+                    urgent = checked
+                },
+                label = {
+                    Text(
+                        text = "紧急结束",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                secondaryLabel = {
+                    Text(
+                        text = "事件最后 10 分钟调红页面（仅开启跟随事件颜色时生效）",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                colors = SwitchButtonDefaults.switchButtonColors().copy(
+                    checkedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                    checkedContentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    checkedSecondaryContentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    checkedIconColor = MaterialTheme.colorScheme.onErrorContainer,
+                    checkedThumbColor = MaterialTheme.colorScheme.errorContainer,
+                    checkedThumbIconColor = MaterialTheme.colorScheme.onErrorContainer,
+                    checkedTrackColor = MaterialTheme.colorScheme.onErrorContainer,
+                    checkedTrackBorderColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                icon = {
+                    Icon(
+                        imageVector = MaterialSymbols.Rounded.Warning,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         if (conflict) {

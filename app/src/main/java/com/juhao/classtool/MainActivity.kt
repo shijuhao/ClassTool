@@ -93,10 +93,12 @@ fun WearApp() {
 
     val dynamicThemeEnabled by settingsDataStore.dynamicThemeFlow.collectAsState(initial = false)
     var currentEventColor by remember { mutableStateOf<Color?>(null) }
+    var currentEventUrgent by remember { mutableStateOf(false) }
 
     LaunchedEffect(dynamicThemeEnabled, testModeLoaded) {
         if (!dynamicThemeEnabled || !testModeLoaded) {
             currentEventColor = null
+            currentEventUrgent = false
             return@LaunchedEffect
         }
         val scheduleStore = ScheduleDataStore(context)
@@ -114,6 +116,7 @@ fun WearApp() {
                         toMinutes(event.endTime)?.let { nowMinutes < it } == true
                 }
                 currentEventColor = active?.courseColor?.let { parseColor(it) }
+                currentEventUrgent = active?.urgent == true
 
                 val nowSecLong = nowSec.toLong()
 
@@ -141,6 +144,7 @@ fun WearApp() {
     }
 
     val themeEventColor = if (dynamicThemeEnabled) currentEventColor else null
+    val themeEventUrgent = if (dynamicThemeEnabled) currentEventUrgent else false
 
     if (testModeLoaded) {
         val scheduleStore = remember(TestModeState.enabled) { ScheduleDataStore(context) }
@@ -241,6 +245,7 @@ fun WearApp() {
                 entry<MenuScreen> {
                     GreetingScreen(
                         pagerState = pagerState,
+                        isActive = backStack.lastOrNull() is MenuScreen && pagerState.currentPage == 1,
                         onChangePage = { backStack.add(it) }
                     )
                 }
@@ -271,7 +276,7 @@ fun WearApp() {
             }
         }
 
-    WearAppTheme(eventColor = themeEventColor) {
+    WearAppTheme(eventColor = themeEventColor, eventUrgent = themeEventUrgent) {
         CompositionLocalProvider(
             LocalScreenShape provides screenShape
         ) {
@@ -291,6 +296,7 @@ fun WearApp() {
 @Composable
 fun GreetingScreen(
     pagerState: PagerState,
+    isActive: Boolean = true,
     onChangePage: (AppKey) -> Unit
 ) {
     HorizontalPagerScaffold(pagerState = pagerState) {
@@ -299,7 +305,7 @@ fun GreetingScreen(
         ) { page ->
             when (page) {
                 0 -> MainScreen(onChangePage = onChangePage)
-                else -> ScheduleFullScreen()
+                else -> ScheduleFullScreen(isActive = isActive)
             }
         }
     }

@@ -10,6 +10,7 @@ import androidx.wear.compose.material3.dynamicColorScheme
 @Composable
 fun WearAppTheme(
     eventColor: Color? = null,
+    eventUrgent: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val baseScheme = dynamicColorScheme(LocalContext.current) ?: wearColorScheme
@@ -17,7 +18,7 @@ fun WearAppTheme(
     val finalScheme = if (eventColor == null) {
         baseScheme
     } else {
-        buildEventColorScheme(baseScheme, eventColor)
+        buildEventColorScheme(baseScheme, eventColor, eventUrgent)
     }
 
     MaterialTheme(

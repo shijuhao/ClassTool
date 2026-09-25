@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.*
@@ -65,17 +66,36 @@ fun CountdownScreen(
             items(sorted.size) { index ->
                 val day = sorted[index]
                 val remaining = daysUntil(day.dateMillis)
-                FilledTonalButton(
+                Card(
                     onClick = { onNavigate(CountdownDetailNavScreen(day.id)) },
-                    label = { Text(day.title) },
-                    secondaryLabel = {
-                        Text("${countdownLabel(remaining)} · ${formatDate(day.dateMillis)}")
-                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
-                )
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = day.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "${countdownLabel(remaining)} · ${formatDate(day.dateMillis)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (day.progressEnabled && day.startDateMillis > 0L) {
+                            Spacer(Modifier.height(8.dp))
+                            LinearProgressIndicator(
+                                progress = { progressFraction(day.startDateMillis, day.dateMillis) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
             }
         }
     }

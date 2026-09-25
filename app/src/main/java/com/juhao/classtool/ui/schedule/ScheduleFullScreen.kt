@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -32,6 +33,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 private const val PREP_BELL_SECONDS = 180
 private const val FINAL_SPRINT_SECONDS = 180
+private const val URGENT_FINAL_SECONDS = 600
 
 private val funnyMessagesFar = listOf(
     "稳如老狗" to "(￣▽￣)",
@@ -218,166 +220,172 @@ fun ScheduleFullScreen(isActive: Boolean = true) {
     val listState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
-    ScreenScaffold(scrollState = listState) { contentPadding ->
-        TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
-            if (displayEvent != null) {
-                item {
-                    ListHeader(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .minimumVerticalContentPadding(
-                                ListHeaderDefaults.minimumTopListContentPadding
-                            ),
-                        transformation = SurfaceTransformation(transformationSpec)
-                    ) {
-                        Text(
-                            text = eventDisplayName(displayEvent),
-                            style = TextStyle(
-                                fontSize = displaySize.sp,
-                                lineHeight = (displaySize * 1.2f).sp,
-                                fontWeight = FontWeight.Normal
-                            ),
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
+    ) {
+        ScreenScaffold(scrollState = listState) { contentPadding ->
+            TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
+                if (displayEvent != null) {
+                    item {
+                        ListHeader(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .basicMarquee(
-                                    iterations = Int.MAX_VALUE,
-                                    repeatDelayMillis = 1000,
-                                    velocity = 30.dp
-                                )
-                        )
+                                .transformedHeight(this, transformationSpec)
+                                .minimumVerticalContentPadding(
+                                    ListHeaderDefaults.minimumTopListContentPadding
+                                ),
+                            transformation = SurfaceTransformation(transformationSpec)
+                        ) {
+                            Text(
+                                text = eventDisplayName(displayEvent),
+                                style = TextStyle(
+                                    fontSize = displaySize.sp,
+                                    lineHeight = (displaySize * 1.2f).sp,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        repeatDelayMillis = 1000,
+                                        velocity = 30.dp
+                                    )
+                            )
+                        }
                     }
-                }
 
-                item {
-                    Text(
-                        text = if (isPrep) "即将开始" else "${displayEvent.startTime} - ${displayEvent.endTime}",
-                        style = TextStyle(
-                            fontSize = titleSize.sp,
-                            lineHeight = (titleSize * 1.2f).sp
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                item {
-                    LinearProgressIndicator(
-                        progress = { progressAnim.value },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ProgressIndicatorDefaults.colors(
-                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            indicatorColor = MaterialTheme.colorScheme.primary,
-                        )
-                    )
-                }
-
-                if (remainingSec != null) {
                     item {
-                        val remainingText = if (remainingSec > 0) {
-                            if (isFinalPart) {
-                                "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
-                            } else {
-                                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
-                            }
-                        } else "00:00"
                         Text(
-                            text = remainingText,
+                            text = if (isPrep) "即将开始" else "${displayEvent.startTime} - ${displayEvent.endTime}",
                             style = TextStyle(
-                                fontSize = mediumSize.sp,
-                                lineHeight = (mediumSize * 1.2f).sp
+                                fontSize = titleSize.sp,
+                                lineHeight = (titleSize * 1.2f).sp
                             ),
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.primary
+                            textAlign = TextAlign.Center
                         )
                     }
 
-                    if (showFunny) {
+                    item {
+                        LinearProgressIndicator(
+                            progress = { progressAnim.value },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ProgressIndicatorDefaults.colors(
+                                trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                indicatorColor = MaterialTheme.colorScheme.primary,
+                            )
+                        )
+                    }
+
+                    if (remainingSec != null) {
                         item {
-                            AnimatedContent(
-                                targetState = funnyPair,
-                                transitionSpec = {
-                                    fadeIn(tween(400)) togetherWith fadeOut(tween(400))
-                                },
-                                label = "funny"
-                            ) { pair ->
-                                Text(
-                                    text = "${pair.first} ${pair.second}",
-                                    style = TextStyle(
-                                        fontSize = 13.sp,
-                                        lineHeight = (13f * 1.2f).sp
-                                    ),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            val remainingText = if (remainingSec > 0) {
+                                if (isFinalPart) {
+                                    "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
+                                } else {
+                                    "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
+                                }
+                            } else "00:00"
+                            Text(
+                                text = remainingText,
+                                style = TextStyle(
+                                    fontSize = mediumSize.sp,
+                                    lineHeight = (mediumSize * 1.2f).sp
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        if (showFunny) {
+                            item {
+                                AnimatedContent(
+                                    targetState = funnyPair,
+                                    transitionSpec = {
+                                        fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+                                    },
+                                    label = "funny"
+                                ) { pair ->
+                                    Text(
+                                        text = "${pair.first} ${pair.second}",
+                                        style = TextStyle(
+                                            fontSize = 13.sp,
+                                            lineHeight = (13f * 1.2f).sp
+                                        ),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
-                }
-            } else {
-                item {
-                    ListHeader(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .minimumVerticalContentPadding(
-                                ListHeaderDefaults.minimumTopListContentPadding
-                            ),
-                        transformation = SurfaceTransformation(transformationSpec)
-                    ) { Text(text = "当前没有事件") }
-                }
-
-                item {
-                    AnimatedContent(
-                        targetState = funnyPair,
-                        transitionSpec = {
-                            fadeIn(tween(400)) togetherWith fadeOut(tween(400))
-                        },
-                        label = "funny"
-                    ) { pair ->
-                        Text(
-                            text = "${pair.first} ${pair.second}",
-                            style = TextStyle(
-                                fontSize = 13.sp,
-                                lineHeight = (13f * 1.2f).sp
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                if (upcomingEvents.isEmpty()) {
+                } else {
                     item {
-                        Text(
-                            text = "今天没有安排，好好休息 ~",
-                            style = TextStyle(
-                                fontSize = 13.sp,
-                                lineHeight = (13f * 1.2f).sp
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        ListHeader(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec)
+                                .minimumVerticalContentPadding(
+                                    ListHeaderDefaults.minimumTopListContentPadding
+                                ),
+                            transformation = SurfaceTransformation(transformationSpec)
+                        ) { Text(text = "当前没有事件") }
+                    }
+
+                    item {
+                        AnimatedContent(
+                            targetState = funnyPair,
+                            transitionSpec = {
+                                fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+                            },
+                            label = "funny"
+                        ) { pair ->
+                            Text(
+                                text = "${pair.first} ${pair.second}",
+                                style = TextStyle(
+                                    fontSize = 13.sp,
+                                    lineHeight = (13f * 1.2f).sp
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (upcomingEvents.isEmpty()) {
+                        item {
+                            Text(
+                                text = "今天没有安排，好好休息 ~",
+                                style = TextStyle(
+                                    fontSize = 13.sp,
+                                    lineHeight = (13f * 1.2f).sp
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-            }
 
-            items(
-                count = upcomingEvents.size,
-                key = { index -> upcomingEvents[index].id }
-            ) { index ->
-                val event = upcomingEvents[index]
-                ScheduleEventCard(
-                    transformation = SurfaceTransformation(transformationSpec),
-                    event = event
-                )
+                items(
+                    count = upcomingEvents.size,
+                    key = { index -> upcomingEvents[index].id }
+                ) { index ->
+                    val event = upcomingEvents[index]
+                    ScheduleEventCard(
+                        transformation = SurfaceTransformation(transformationSpec),
+                        event = event
+                    )
+                }
             }
         }
     }

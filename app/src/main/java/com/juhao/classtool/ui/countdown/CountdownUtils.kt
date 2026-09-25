@@ -1,6 +1,7 @@
 package com.juhao.classtool.ui.countdown
 
 import java.util.Calendar
+
 fun daysUntil(targetMillis: Long): Long {
     val today = startOfDay(System.currentTimeMillis())
     val target = startOfDay(targetMillis)
@@ -30,4 +31,14 @@ fun countdownLabel(days: Long): String = when {
     days < 0 -> "已过 ${-days} 天"
     days == 0L -> "就是今天"
     else -> "还有 $days 天"
+}
+
+fun progressFraction(startMillis: Long, targetMillis: Long): Float {
+    val start = startOfDay(startMillis)
+    val target = startOfDay(targetMillis)
+    val today = startOfDay(System.currentTimeMillis())
+    val total = (target - start).toFloat()
+    if (total <= 0f) return if (today >= target) 1f else 0f
+    val elapsed = (today - start).toFloat()
+    return (elapsed / total).coerceIn(0f, 1f)
 }

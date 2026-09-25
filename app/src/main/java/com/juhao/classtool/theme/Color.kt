@@ -118,7 +118,38 @@ private fun tuneLightness(color: Color, targetL: Float): Color {
     return fromHsl(h, s, targetL.coerceIn(0f, 1f))
 }
 
-fun buildEventColorScheme(base: ColorScheme, eventColor: Color): ColorScheme {
+fun buildEventColorScheme(
+    base: ColorScheme,
+    eventColor: Color,
+    eventUrgent: Boolean = false
+): ColorScheme {
+    if (eventUrgent) {
+        val surfaceContainerHigh = blend(base.surfaceContainerHigh, base.error, 0.14f)
+        val surfaceContainer = blend(base.surfaceContainer, base.error, 0.10f)
+        val surfaceContainerLow = blend(base.surfaceContainerLow, base.error, 0.06f)
+
+        return base.copy(
+            primary = base.error,
+            onPrimary = base.onError,
+            primaryContainer = base.errorContainer,
+            onPrimaryContainer = base.onErrorContainer,
+            secondary = base.error,
+            onSecondary = base.onError,
+            secondaryContainer = base.errorContainer,
+            onSecondaryContainer = base.onErrorContainer,
+            tertiary = base.error,
+            onTertiary = base.onError,
+            tertiaryContainer = base.errorContainer,
+            onTertiaryContainer = base.onErrorContainer,
+            surfaceContainerHigh = surfaceContainerHigh,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerLow = surfaceContainerLow,
+            primaryDim = base.errorContainer,
+            secondaryDim = base.errorContainer,
+            tertiaryDim = base.errorContainer
+        )
+    }
+
     val (eventH, eventS, eventL) = toHsl(eventColor)
 
     val primary = if (eventL < 0.35f) {

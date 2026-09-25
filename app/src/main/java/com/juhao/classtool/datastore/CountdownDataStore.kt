@@ -19,7 +19,9 @@ data class CountdownDay(
     val id: Long,
     val title: String,
     val dateMillis: Long,
-    val note: String = ""
+    val note: String = "",
+    val progressEnabled: Boolean = false,
+    val startDateMillis: Long = 0L
 )
 
 @Serializable

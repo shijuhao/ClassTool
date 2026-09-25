@@ -42,9 +42,18 @@ fun CountdownEditScreen(
     var title by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now()) }
+    var progressEnabled by remember { mutableStateOf(false) }
+    var startDate by remember { mutableStateOf(LocalDate.now()) }
     var loaded by remember { mutableStateOf(false) }
 
     var showDatePicker by remember { mutableStateOf(false) }
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(date) {
+        if (startDate.isAfter(date)) {
+            startDate = date
+        }
+    }
 
     LaunchedEffect(dayId) {
         if (dayId != null) {
@@ -54,6 +63,15 @@ fun CountdownEditScreen(
                 date = Instant.ofEpochMilli(it.dateMillis)
                     .atZone(ZoneId.systemDefault())
                     .toLocalDate()
+                progressEnabled = it.progressEnabled
+                if (it.startDateMillis > 0L) {
+                    val saved = Instant.ofEpochMilli(it.startDateMillis)
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                    startDate = if (saved.isAfter(date)) date else saved
+                } else {
+                    startDate = LocalDate.now()
+                }
             }
         }
         loaded = true
@@ -71,6 +89,22 @@ fun CountdownEditScreen(
             },
             datePickerType = DatePickerType.YearMonthDay,
             minValidDate = LocalDate.now()
+        )
+        return
+    }
+
+    if (showStartDatePicker) {
+        BackHandler {
+            showStartDatePicker = false
+        }
+        DatePicker(
+            initialDate = startDate,
+            onDatePicked = {
+                startDate = it
+                showStartDatePicker = false
+            },
+            datePickerType = DatePickerType.YearMonthDay,
+            maxValidDate = date
         )
         return
     }
@@ -154,6 +188,46 @@ fun CountdownEditScreen(
             }
 
             item {
+                SwitchButton(
+                    checked = progressEnabled,
+                    onCheckedChange = { progressEnabled = it },
+                    label = { Text("进度条") },
+                    secondaryLabel = { Text("显示倒计日进度条") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Avg_pace,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+
+            if (progressEnabled) {
+                item {
+                    FilledTonalButton(
+                        onClick = { showStartDatePicker = true },
+                        label = { Text("开始日期") },
+                        secondaryLabel = { Text(startDate.format(formatter)) },
+                        icon = {
+                            Icon(
+                                imageVector = MaterialSymbols.Rounded.Date_range,
+                                contentDescription = null,
+                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec),
+                        transformation = SurfaceTransformation(transformationSpec)
+                    )
+                }
+            }
+
+            item {
                 Button(
                     onClick = {
                         if (title.isBlank()) return@Button
@@ -166,7 +240,17 @@ fun CountdownEditScreen(
                                         .atStartOfDay(ZoneId.systemDefault())
                                         .toInstant()
                                         .toEpochMilli(),
-                                    note = note.trim()
+                                    note = note.trim(),
+                                    progressEnabled = progressEnabled,
+                                    startDateMillis = if (progressEnabled) {
+                                        val safeStart = if (startDate.isAfter(date)) date else startDate
+                                        safeStart
+                                            .atStartOfDay(ZoneId.systemDefault())
+                                            .toInstant()
+                                            .toEpochMilli()
+                                    } else {
+                                        0L
+                                    }
                                 )
                             )
                             onBack()
