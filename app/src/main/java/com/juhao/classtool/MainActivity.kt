@@ -116,7 +116,11 @@ fun WearApp() {
                         toMinutes(event.endTime)?.let { nowMinutes < it } == true
                 }
                 currentEventColor = active?.courseColor?.let { parseColor(it) }
-                currentEventUrgent = active?.urgent == true
+
+                val remaining = active?.let {
+                    (toMinutes(it.endTime) ?: Int.MAX_VALUE) - nowMinutes
+                } ?: Int.MAX_VALUE
+                currentEventUrgent = active?.urgent == true && remaining in 0..10
 
                 val nowSecLong = nowSec.toLong()
 
@@ -124,9 +128,12 @@ fun WearApp() {
                     .asSequence()
                     .filter { it.enabled && today in it.weekdays }
                     .flatMap { event ->
+                        val start = toMinutes(event.startTime)?.toLong()?.times(60L)
+                        val end = toMinutes(event.endTime)?.toLong()?.times(60L)
                         sequenceOf(
-                            toMinutes(event.startTime)?.toLong()?.times(60L),
-                            toMinutes(event.endTime)?.toLong()?.times(60L)
+                            start,
+                            end,
+                            end?.minus(600L)
                         )
                     }
                     .filterNotNull()
