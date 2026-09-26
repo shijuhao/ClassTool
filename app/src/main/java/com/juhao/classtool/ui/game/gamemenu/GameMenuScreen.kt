@@ -51,7 +51,9 @@ fun GameMenu(
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
@@ -67,7 +69,9 @@ fun GameMenu(
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
@@ -83,7 +87,12 @@ fun GameMenu(
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                        .minimumVerticalContentPadding(
+                            ButtonDefaults.minimumVerticalListContentPadding
+                        ),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }

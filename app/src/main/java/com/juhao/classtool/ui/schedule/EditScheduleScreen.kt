@@ -2,7 +2,6 @@ package com.juhao.classtool.ui.schedule
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -255,6 +254,8 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                 .sortedWith(compareBy({ it.startTime }, { it.weekdays.firstOrNull()?.ordinal ?: 0 }))
                 .filterNot { e -> e.type == ScheduleEventType.BREAK }
 
+            val addButtonIsLast = dayEvents.isEmpty()
+
             ScreenScaffold(scrollState = listState) { contentPadding ->
                 TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
                     item {
@@ -279,7 +280,14 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                             transformation = SurfaceTransformation(transformationSpec),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec),
+                                .transformedHeight(this, transformationSpec)
+                                .then(
+                                    if (addButtonIsLast) {
+                                        Modifier.minimumVerticalContentPadding(
+                                            ButtonDefaults.minimumVerticalListContentPadding
+                                        )
+                                    } else Modifier
+                                ),
                             label = { Text("新增事件") },
                             icon = {
                                 Icon(
@@ -293,6 +301,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
 
                     items(count = dayEvents.size, key = { dayEvents[it].id }) { index ->
                         val event = dayEvents[index]
+                        val isLast = index == dayEvents.lastIndex
                         val start = toMinutes(event.startTime)
                         val end = toMinutes(event.endTime)
                         val highlighted = !isAllPage &&
@@ -302,6 +311,16 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                                 nowMinutes in start until end
 
                         ScheduleEventCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .transformedHeight(this, transformationSpec)
+                                .then(
+                                    if (isLast) {
+                                        Modifier.minimumVerticalContentPadding(
+                                            ButtonDefaults.minimumVerticalListContentPadding
+                                        )
+                                    } else Modifier
+                                ),
                             transformation = SurfaceTransformation(transformationSpec),
                             event = event,
                             highlighted = highlighted,
@@ -317,49 +336,6 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
             }
         }
     }
-}
-
-@Composable
-fun ScheduleEventCard(
-    transformation: SurfaceTransformation? = null,
-    event: ScheduleEvent,
-    highlighted: Boolean = false,
-    showWeekdayBadge: Boolean = false,
-    onClick: () -> Unit = {},
-    onLongClick: () -> Unit = {}
-) {
-    val dotColor = event.courseColor?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
-
-    FilledTonalButton(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        transformation = transformation,
-        label = { Text(eventDisplayName(event)) },
-        secondaryLabel = {
-            val time = "${event.startTime} - ${event.endTime}"
-            Text(
-                if (showWeekdayBadge) "$time  ${weekdayScopeLabel(event.weekdays)}"
-                else time
-            )
-        },
-        icon = {
-            Box(
-                Modifier
-                    .size(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(dotColor)
-            )
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (highlighted) Modifier.border(
-                    2.dp,
-                    MaterialTheme.colorScheme.primaryContainer,
-                    RoundedCornerShape(50.dp)
-                ) else Modifier
-            )
-    )
 }
 
 @Composable
@@ -824,14 +800,6 @@ private fun scopeOf(days: Set<Weekday>): WeekdayScope = when (days) {
     WORKDAYS -> WeekdayScope.WORKDAY
     WEEKEND -> WeekdayScope.WEEKEND
     else -> WeekdayScope.CUSTOM
-}
-
-private fun weekdayScopeLabel(days: Set<Weekday>): String = when {
-    days.isEmpty() -> "未设置"
-    days == WORKDAYS -> "工作日"
-    days == WEEKEND -> "周末"
-    days.size == 7 -> "每天"
-    else -> days.sortedBy { it.ordinal }.joinToString("") { weekdayShortLabel(it) }
 }
 
 private fun addMinutes(time: String, minutes: Int): String {

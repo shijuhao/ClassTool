@@ -20,30 +20,36 @@ enum class ScreenShape { ROUND, SQUARE }
 
 val LocalScreenShape = staticCompositionLocalOf { ScreenShape.ROUND }
 
+private const val ROUND_RATIO_THRESHOLD = 0.45f
+
 @Composable
 fun rememberIsSquareScreen(mode: ScreenShapeMode): Boolean {
     if (mode == ScreenShapeMode.FORCE_SQUARE) return true
     if (mode == ScreenShapeMode.FORCE_ROUND) return false
     val context = LocalContext.current
-    return remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            runCatching {
-                val display = context.display
-                val modeInfo = display.mode
-                val shortSide = minOf(modeInfo.physicalWidth, modeInfo.physicalHeight).toFloat()
-                if (shortSide <= 0f) return@runCatching false
+    return remember { context.isSquareScreen() }
+}
 
-                val corner = display.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT)
-                    ?: return@runCatching true
+private fun Context.isSquareScreen(): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+    return runCatching {
+        val display = display ?: return true
+        val modeInfo = display.mode ?: return true
+        val shortSide = minOf(modeInfo.physicalWidth, modeInfo.physicalHeight).toFloat()
+        if (shortSide <= 0f) return true
 
-                val ratio = corner.radius / shortSide
-                val isRoundWatch = ratio >= 0.35f
-                !isRoundWatch
-            }.getOrDefault(false)
-        } else {
-            false
-        }
-    }
+        val radii = listOf(
+            RoundedCorner.POSITION_TOP_LEFT,
+            RoundedCorner.POSITION_TOP_RIGHT,
+            RoundedCorner.POSITION_BOTTOM_LEFT,
+            RoundedCorner.POSITION_BOTTOM_RIGHT,
+        ).mapNotNull { display.getRoundedCorner(it)?.radius }
+
+        if (radii.isEmpty()) return true
+
+        val maxRatio = radii.max() / shortSide
+        maxRatio < ROUND_RATIO_THRESHOLD
+    }.getOrDefault(true)
 }
 
 @Composable

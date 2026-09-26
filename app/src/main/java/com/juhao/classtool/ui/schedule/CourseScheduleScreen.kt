@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -115,17 +116,33 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
                             Text(
                                 text = "这一天没有上课事件",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .transformedHeight(this, transformationSpec)
+                                    .graphicsLayer {
+                                        with(transformationSpec) {
+                                            applyContainerTransformation(scrollProgress)
+                                        }
+                                    }
                             )
                         }
                     }
 
                     items(count = dayClasses.size, key = { dayClasses[it].id }) { index ->
                         val event = dayClasses[index]
+                        val isLast = index == dayClasses.lastIndex
                         CourseEditButton(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec),
+                                .transformedHeight(this, transformationSpec)
+                                .then(
+                                    if (isLast) {
+                                        Modifier.minimumVerticalContentPadding(
+                                            ButtonDefaults.minimumVerticalListContentPadding
+                                        )
+                                    } else Modifier
+                                ),
                             transformation = SurfaceTransformation(transformationSpec),
                             event = event,
                             onClick = { editingEvent = event }

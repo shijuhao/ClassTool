@@ -113,7 +113,11 @@ fun AboutScreen() {
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
+                    modifier = Modifier.fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                        .minimumVerticalContentPadding(
+                            ButtonDefaults.minimumVerticalListContentPadding
+                        ),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }

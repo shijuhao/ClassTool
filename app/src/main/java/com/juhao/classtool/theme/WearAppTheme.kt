@@ -15,10 +15,18 @@ fun WearAppTheme(
 ) {
     val baseScheme = dynamicColorScheme(LocalContext.current) ?: wearColorScheme
 
-    val finalScheme = if (eventColor == null) {
-        baseScheme
-    } else {
-        buildEventColorScheme(baseScheme, eventColor, eventUrgent)
+    val finalScheme = when {
+        eventUrgent -> buildEventColorScheme(
+            base = baseScheme,
+            eventColor = eventColor ?: baseScheme.error,
+            eventUrgent = true
+        )
+        eventColor != null -> buildEventColorScheme(
+            base = baseScheme,
+            eventColor = eventColor,
+            eventUrgent = false
+        )
+        else -> baseScheme
     }
 
     MaterialTheme(

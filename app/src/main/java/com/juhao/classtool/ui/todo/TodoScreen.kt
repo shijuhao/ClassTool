@@ -65,6 +65,7 @@ fun TodoScreen(
 
             items(sorted.size) { index ->
                 val item = sorted[index]
+                val isLast = index == sorted.lastIndex
                 FilledTonalButton(
                     onClick = { onNavigate(TodoDetailNavScreen(item.id)) },
                     label = { Text(item.title) },
@@ -91,7 +92,14 @@ fun TodoScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .transformedHeight(this, transformationSpec)
-                        .alpha(if (item.done) 0.6f else 1f),
+                        .alpha(if (item.done) 0.6f else 1f)
+                        .then(
+                            if (isLast) {
+                                Modifier.minimumVerticalContentPadding(
+                                    ButtonDefaults.minimumVerticalListContentPadding
+                                )
+                            } else Modifier
+                        ),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }

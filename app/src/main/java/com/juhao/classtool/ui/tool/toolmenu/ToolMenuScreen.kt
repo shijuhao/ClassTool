@@ -50,7 +50,12 @@ fun ToolMenu(
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                        .minimumVerticalContentPadding(
+                            ButtonDefaults.minimumVerticalListContentPadding
+                        ),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }

@@ -66,11 +66,19 @@ fun CountdownScreen(
             items(sorted.size) { index ->
                 val day = sorted[index]
                 val remaining = daysUntil(day.dateMillis)
+                val isLast = index == sorted.lastIndex
                 Card(
                     onClick = { onNavigate(CountdownDetailNavScreen(day.id)) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .transformedHeight(this, transformationSpec),
+                        .transformedHeight(this, transformationSpec)
+                        .then(
+                            if (isLast) {
+                                Modifier.minimumVerticalContentPadding(
+                                    ButtonDefaults.minimumVerticalListContentPadding
+                                )
+                            } else Modifier
+                        ),
                     transformation = SurfaceTransformation(transformationSpec)
                 ) {
                     Column(

@@ -1,6 +1,7 @@
 package com.juhao.classtool.ui.schedule
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,15 +14,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import androidx.wear.compose.material3.*
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.Weekday
+import com.juhao.classtool.utils.*
 import java.time.LocalDate
 import java.time.LocalTime
-import androidx.core.graphics.toColorInt
 
 fun weekdayLabel(weekday: Weekday): String = when (weekday) {
     Weekday.MONDAY -> "周一"
@@ -95,6 +97,75 @@ val paletteColors = listOf(
     "#FFA726", "#FF7043", "#A1887F", "#78909C",
     "#FF80AB", "#40E0D0", "#B2FF59", "#FFE082"
 )
+
+const val PREP_BELL_SECONDS = 180
+const val FINAL_SPRINT_SECONDS = 180
+const val URGENT_FINAL_SECONDS = 600
+
+val funnyMessagesFar = listOf(
+    "稳如老狗" to "(￣▽￣)",
+    "时间还早，摸会儿鱼" to "( ˘ω˘ )",
+    "一切尽在掌握" to "(๑•̀ㅂ•́)و"
+)
+
+val funnyMessagesMid = listOf(
+    "撑住，过半了" to "(ง •_•)ง",
+    "还有一阵，别慌" to "(´･ω･`)",
+    "保持节奏" to "( •̀ ω •́ )"
+)
+
+val funnyMessagesNear = listOf(
+    "快下课了，加把劲" to "٩(๑•̀ω•́๑)۶",
+    "胜利就在前方" to "(๑•̀ㅂ•́)و✧",
+    "再坚持一会儿" to "(｡•̀ᴗ-)✧"
+)
+
+val funnyMessagesFinal = listOf(
+    "最后冲刺！" to "ヽ(•̀ω•́ )ゝ",
+    "马上结束！" to "(ﾉ>ω<)ﾉ",
+    "冲鸭！" to "ヾ(≧▽≦*)o"
+)
+
+val funnyMessagesPrep = listOf(
+    "预备铃响啦，准备上课" to "🔔(•̀ᴗ•́)و",
+    "要上课了，收收心" to "(๑•́ ₃ •̀๑)",
+    "预备！" to "⏰(ง •̀_•́)ง"
+)
+
+val funnyMessagesBreak = listOf(
+    "课间休息，活动一下" to "☕(´▽`)",
+    "喝口水，放松放松" to "🥤( ˘ω˘ )",
+    "下课啦，随便逛逛" to "🐾(￣▽￣)"
+)
+
+val funnyMessagesIdle = listOf(
+    "摸鱼时间到" to "🐟(￣▽￣)",
+    "自由活动，随便浪" to "( ˘ω˘ )",
+    "闲着也是闲着" to "(´･ω･`)"
+)
+
+fun funnyPool(tier: String): List<Pair<String, String>> = when (tier) {
+    "prep" -> funnyMessagesPrep
+    "break" -> funnyMessagesBreak
+    "idle" -> funnyMessagesIdle
+    "final" -> funnyMessagesFinal
+    "near" -> funnyMessagesNear
+    "mid" -> funnyMessagesMid
+    else -> funnyMessagesFar
+}
+
+private val WORKDAYS_FOR_LABEL = setOf(
+    Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY, Weekday.THURSDAY, Weekday.FRIDAY
+)
+private val WEEKEND_FOR_LABEL = setOf(Weekday.SATURDAY, Weekday.SUNDAY)
+
+fun weekdayScopeLabel(days: Set<Weekday>): String = when {
+    days.isEmpty() -> "未设置"
+    days == WORKDAYS_FOR_LABEL -> "工作日"
+    days == WEEKEND_FOR_LABEL -> "周末"
+    days.size == 7 -> "每天"
+    else -> days.sortedBy { it.ordinal }.joinToString("") { weekdayShortLabel(it) }
+}
 
 @Composable
 fun CustomPresetDialog(
@@ -195,4 +266,48 @@ fun CustomPresetDialog(
             }
         }
     }
+}
+
+@Composable
+fun ScheduleEventCard(
+    modifier: Modifier = Modifier,
+    transformation: SurfaceTransformation? = null,
+    event: ScheduleEvent,
+    highlighted: Boolean = false,
+    showWeekdayBadge: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {}
+) {
+    val dotColor = event.courseColor?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
+
+    FilledTonalButton(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        transformation = transformation,
+        label = { Text(eventDisplayName(event)) },
+        secondaryLabel = {
+            val time = "${event.startTime} - ${event.endTime}"
+            Text(
+                if (showWeekdayBadge) "$time  ${weekdayScopeLabel(event.weekdays)}"
+                else time
+            )
+        },
+        icon = {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(dotColor)
+            )
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (highlighted) Modifier.border(
+                    2.dp,
+                    MaterialTheme.colorScheme.primaryContainer,
+                    RoundedCornerShape(50.dp)
+                ) else Modifier
+            )
+    )
 }

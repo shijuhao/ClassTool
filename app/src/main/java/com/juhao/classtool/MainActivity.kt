@@ -8,36 +8,26 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
-import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
-import androidx.wear.compose.foundation.pager.HorizontalPager
-import androidx.wear.compose.foundation.pager.PagerState
-import androidx.wear.compose.foundation.pager.rememberPagerState
-import androidx.wear.compose.material3.*
-import androidx.wear.compose.material3.lazy.transformedHeight
+import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
-import com.composables.icons.materialsymbols.MaterialSymbols
-import com.composables.icons.materialsymbols.rounded.*
-import com.composables.icons.materialsymbols.roundedfilled.Gamepad
-
-import com.juhao.classtool.ui.countdown.*
 import com.juhao.classtool.datastore.*
 import com.juhao.classtool.navigation.*
-import com.juhao.classtool.utils.*
+import com.juhao.classtool.ui.countdown.*
 import com.juhao.classtool.ui.schedule.*
+import com.juhao.classtool.ui.main.GreetingScreen
 import com.juhao.classtool.ui.components.RoundToast
 import com.juhao.classtool.theme.WearAppTheme
+import com.juhao.classtool.utils.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Duration.Companion.milliseconds
@@ -55,7 +45,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             WearApp()
         }
@@ -65,7 +54,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun WearApp() {
     val backStack = rememberNavBackStack(MenuScreen)
-
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -79,11 +67,6 @@ fun WearApp() {
         TestModeState.enabled = settingsDataStore.getTestMode()
         testModeLoaded = true
     }
-
-    val pagerState = rememberPagerState(
-        initialPage = 0,
-        pageCount = { 2 }
-    )
 
     val screenShapeMode by settingsDataStore.screenShapeModeFlow.collectAsState(
         initial = ScreenShapeMode.AUTO
@@ -123,18 +106,13 @@ fun WearApp() {
                 currentEventUrgent = active?.urgent == true && remaining in 0..10
 
                 val nowSecLong = nowSec.toLong()
-
                 val nextBoundary = events
                     .asSequence()
                     .filter { it.enabled && today in it.weekdays }
                     .flatMap { event ->
                         val start = toMinutes(event.startTime)?.toLong()?.times(60L)
                         val end = toMinutes(event.endTime)?.toLong()?.times(60L)
-                        sequenceOf(
-                            start,
-                            end,
-                            end?.minus(600L)
-                        )
+                        sequenceOf(start, end, end?.minus(600L))
                     }
                     .filterNotNull()
                     .filter { it > nowSecLong }
@@ -156,39 +134,14 @@ fun WearApp() {
     if (testModeLoaded) {
         val scheduleStore = remember(TestModeState.enabled) { ScheduleDataStore(context) }
 
-        LaunchedEffect(scheduleStore, settingsDataStore) {
-            val events = scheduleStore.getSchedule().events
-            val prepBellEnabled = settingsDataStore.getPrepBell()
-            val today = todayWeekday()
-            val nowSec = currentSecondOfDay()
-            val nowMinutes = nowSec / 60
-            val hasCurrent = events.any { event ->
-                event.enabled &&
-                    today in event.weekdays &&
-                    toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-                    toMinutes(event.endTime)?.let { nowMinutes < it } == true
-            }
-            val inPrep = prepBellEnabled && events.any { event ->
-                if (!event.enabled) return@any false
-                if (today !in event.weekdays) return@any false
-                if (event.type == ScheduleEventType.BREAK) return@any false
-                val startSec = toMinutes(event.startTime)?.times(60) ?: return@any false
-                nowSec in (startSec - 180) until startSec
-            }
-            if (hasCurrent || inPrep) {
-                pagerState.animateScrollToPage(1)
-            }
-        }
-
         DisposableEffect(scheduleStore, settingsDataStore) {
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(c: Context?, intent: Intent?) {
                     if (intent?.action != Intent.ACTION_TIME_TICK) return
                     scope.launch {
                         val globalReminderEnabled = settingsDataStore.getGlobalEventReminder()
-                        val onHomeSecondPage =
-                            backStack.lastOrNull() is MenuScreen && pagerState.currentPage == 1
-                        if (!globalReminderEnabled || onHomeSecondPage) return@launch
+                        val onHomePage = backStack.lastOrNull() is MenuScreen
+                        if (!globalReminderEnabled || onHomePage) return@launch
 
                         val nowMinutes = currentSecondOfDay() / 60
                         val today = todayWeekday()
@@ -246,42 +199,35 @@ fun WearApp() {
         }
     }
 
-    val entryProvider =
-        remember {
-            entryProvider<NavKey> {
-                entry<MenuScreen> {
-                    GreetingScreen(
-                        pagerState = pagerState,
-                        isActive = backStack.lastOrNull() is MenuScreen && pagerState.currentPage == 1,
-                        onChangePage = { backStack.add(it) }
-                    )
-                }
-    
-                scheduleEntries()
-    
-                countdownEntries(
-                    onBack = { backStack.removeLastOrNull() },
-                    onNavigate = { backStack.add(it) },
-                )
-    
-                todoEntries(
-                    onBack = { backStack.removeLastOrNull() },
-                    onNavigate = { backStack.add(it) },
-                )
-    
-                toolEntries(
-                    onNavigate = { backStack.add(it) },
-                )
-    
-                gameEntries(
-                    onNavigate = { backStack.add(it) },
-                )
-    
-                settingsEntries(
-                    onNavigate = { backStack.add(it) },
+    val entryProvider = remember {
+        entryProvider<NavKey> {
+            entry<MenuScreen> {
+                GreetingScreen(
+                    isActive = backStack.lastOrNull() is MenuScreen,
+                    onChangePage = { backStack.add(it) }
                 )
             }
+
+            scheduleEntries()
+            countdownEntries(
+                onBack = { backStack.removeLastOrNull() },
+                onNavigate = { backStack.add(it) },
+            )
+            todoEntries(
+                onBack = { backStack.removeLastOrNull() },
+                onNavigate = { backStack.add(it) },
+            )
+            toolEntries(
+                onNavigate = { backStack.add(it) },
+            )
+            gameEntries(
+                onNavigate = { backStack.add(it) },
+            )
+            settingsEntries(
+                onNavigate = { backStack.add(it) },
+            )
         }
+    }
 
     WearAppTheme(eventColor = themeEventColor, eventUrgent = themeEventUrgent) {
         CompositionLocalProvider(
@@ -294,183 +240,6 @@ fun WearApp() {
                     backStack = backStack,
                     entryProvider = entryProvider,
                     sceneStrategies = listOf(swipeDismissableSceneStrategy)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun GreetingScreen(
-    pagerState: PagerState,
-    isActive: Boolean = true,
-    onChangePage: (AppKey) -> Unit
-) {
-    HorizontalPagerScaffold(pagerState = pagerState) {
-        HorizontalPager(
-            state = pagerState
-        ) { page ->
-            when (page) {
-                0 -> MainScreen(onChangePage = onChangePage)
-                else -> ScheduleFullScreen(isActive = isActive)
-            }
-        }
-    }
-}
-
-@Composable
-fun MainScreen(
-    onChangePage: (AppKey) -> Unit
-) {
-    val scrollState = rememberTransformingLazyColumnState()
-    val square = LocalScreenShape.current == ScreenShape.SQUARE
-    val transformationSpec = rememberAdaptiveTransformationSpec(square)
-
-    ScreenScaffold(
-        scrollState = scrollState
-    ) { contentPadding ->
-        TransformingLazyColumn(
-            state = scrollState,
-            contentPadding = contentPadding
-        ) {
-            item {
-                ListHeader(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .minimumVerticalContentPadding(
-                                ListHeaderDefaults.minimumTopListContentPadding
-                            ),
-                    transformation = SurfaceTransformation(transformationSpec)
-                ) { Text(text = "ClassTool") }
-            }
-
-            item {
-                FilledTonalButton(
-                    onClick = { onChangePage(EditScheduleNavScreen) },
-                    label = { Text("时间表") },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Schedule,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-
-            item {
-                FilledTonalButton(
-                    onClick = { onChangePage(CourseScheduleNavScreen) },
-                    label = { Text("课程表") },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Date_range,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-
-            item {
-                FilledTonalButton(
-                    onClick = { onChangePage(CountdownNavScreen) },
-                    label = { Text("倒计日") },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Event,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-            
-            item {
-                FilledTonalButton(
-                    onClick = { onChangePage(TodoNavScreen) },
-                    label = { Text("待办") },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Checklist,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-
-            item {
-                FilledTonalButton(
-                    onClick = { onChangePage(ToolMenuNavScreen) },
-                    label = { Text("工具") },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Handyman,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-
-            item {
-                FilledTonalButton(
-                    onClick = { onChangePage(GameMenuNavScreen) },
-                    label = { Text("小游戏") },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.RoundedFilled.Gamepad,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-
-            item {
-                FilledTonalButton(
-                    onClick = { onChangePage(SettingsNavScreen) },
-                    label = { Text("设置") },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Settings,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-
-            item {
-                FilledTonalButton(
-                    onClick = { onChangePage(AboutNavScreen) },
-                    label = { Text("关于") },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Info,
-                            contentDescription = null,
-                            modifier = Modifier.size(ButtonDefaults.IconSize),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
                 )
             }
         }
