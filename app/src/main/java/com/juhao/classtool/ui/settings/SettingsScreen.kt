@@ -67,7 +67,7 @@ fun SettingsScreen(
                 FilledTonalButton(
                     onClick = onNavigateToAdjustment,
                     label = { Text("调休") },
-                    secondaryLabel = { Text("把某星期的课调到另一星期") },
+                    secondaryLabel = { Text("互换两天的时间表") },
                     icon = {
                         Icon(
                             imageVector = MaterialSymbols.Rounded.Swap_horiz,

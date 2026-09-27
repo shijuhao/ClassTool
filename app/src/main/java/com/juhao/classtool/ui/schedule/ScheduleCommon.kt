@@ -154,7 +154,12 @@ fun effectiveWeekdayOnDate(
     val adj = adjustments.firstOrNull { adjustment ->
         date >= adjustment.startDate && date <= adjustment.endDate
     } ?: return actual
-    return if (actual == adj.fromWeekday) adj.toWeekday else actual
+
+    return when (actual) {
+        adj.fromWeekday -> adj.toWeekday
+        adj.toWeekday -> adj.fromWeekday
+        else -> actual
+    }
 }
 
 fun isEventActiveOnDate(event: ScheduleEvent, date: String): Boolean {
@@ -223,7 +228,7 @@ fun eventsForWeekday(
     weekday: Weekday,
     date: String
 ): List<ScheduleEvent> {
-    val effectiveWeekday = effectiveWeekdayOnDate(date, adjustments) ?: weekday
+    val effectiveWeekday = effectiveWeekdayOnDate(date, adjustments) ?: return emptyList()
     val result = mutableListOf<ScheduleEvent>()
 
     for (event in events) {

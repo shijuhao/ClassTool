@@ -68,7 +68,9 @@ fun GreetingScreen(
     }
 
     val todayDate = todayDateString()
-    val todayWeekdayValue = todayWeekday()
+    val displayWeekday = remember(todayDate, adjustments) {
+        effectiveWeekdayOnDate(todayDate, adjustments) ?: todayWeekday()
+    }
     val nowMinutes = nowSecondOfDay / 60
 
     val currentEvent: ScheduleEvent? = remember(schedule, adjustments, todayDate, nowMinutes) {
@@ -181,7 +183,7 @@ fun GreetingScreen(
                         transformation = SurfaceTransformation(transformationSpec)
                     ) {
                         Text(
-                            text = eventDisplayNameFor(activeDisplayEvent, todayWeekdayValue),
+                            text = eventDisplayNameFor(activeDisplayEvent, displayWeekday),
                             style = TextStyle(
                                 fontSize = displaySize.sp,
                                 lineHeight = (displaySize * 1.2f).sp,
@@ -365,7 +367,7 @@ fun GreetingScreen(
                             .transformedHeight(this, transformationSpec),
                         transformation = SurfaceTransformation(transformationSpec),
                         event = nextEvent,
-                        weekday = todayWeekdayValue
+                        weekday = displayWeekday
                     )
                 }
 

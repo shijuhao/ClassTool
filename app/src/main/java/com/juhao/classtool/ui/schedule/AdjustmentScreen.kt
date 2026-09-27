@@ -192,7 +192,7 @@ fun AdjustmentScreen(modifier: Modifier = Modifier) {
                     transformation = SurfaceTransformation(transformationSpec),
                     label = {
                         Text(
-                            "${weekdayLabel(adjustment.fromWeekday)} 的课调到 ${weekdayLabel(adjustment.toWeekday)}"
+                            "${weekdayLabel(adjustment.fromWeekday)} ⇄ ${weekdayLabel(adjustment.toWeekday)}"
                         )
                     },
                     secondaryLabel = {
@@ -330,7 +330,7 @@ private fun AdjustmentEditDialog(
 
         item {
             Column(Modifier.fillMaxWidth()) {
-                Text("原星期", style = MaterialTheme.typography.labelMedium)
+                Text("星期", style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(4.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -349,7 +349,7 @@ private fun AdjustmentEditDialog(
 
         item {
             Column(Modifier.fillMaxWidth()) {
-                Text("调到星期", style = MaterialTheme.typography.labelMedium)
+                Text("互换为", style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(4.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -371,7 +371,7 @@ private fun AdjustmentEditDialog(
                 Text(
                     text = when {
                         invalidRange -> "结束日期需不早于开始日期"
-                        else -> "原星期与目标星期不能相同"
+                        else -> "两个星期不能相同"
                     },
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall
