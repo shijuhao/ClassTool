@@ -27,7 +27,6 @@ import com.juhao.classtool.theme.WearAppTheme
 import com.juhao.classtool.utils.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Duration.Companion.milliseconds
@@ -88,16 +87,12 @@ fun WearApp() {
         scheduleStore.scheduleFlow.collectLatest { schedule ->
             while (true) {
                 val events = schedule.events
-                val today = todayWeekday()
+                val adjustments = schedule.adjustments
+                val todayDate = todayDateString()
                 val nowSec = currentSecondOfDay()
                 val nowMinutes = nowSec / 60
 
-                val active = events.firstOrNull { event ->
-                    event.enabled &&
-                        today in event.weekdays &&
-                        toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-                        toMinutes(event.endTime)?.let { nowMinutes < it } == true
-                }
+                val active = findCurrentEventOnDate(events, adjustments, todayDate, nowMinutes)
                 currentEventColor = active?.courseColor?.let { parseColor(it) }
 
                 val remaining = active?.let {
@@ -106,12 +101,11 @@ fun WearApp() {
                 currentEventUrgent = active?.urgent == true && remaining in 0..10
 
                 val nowSecLong = nowSec.toLong()
-                val nextBoundary = events
+                val nextBoundary = eventsOnDate(events, adjustments, todayDate)
                     .asSequence()
-                    .filter { it.enabled && today in it.weekdays }
-                    .flatMap { event ->
-                        val start = toMinutes(event.startTime)?.toLong()?.times(60L)
-                        val end = toMinutes(event.endTime)?.toLong()?.times(60L)
+                    .flatMap { effective ->
+                        val start = toMinutes(effective.startTime)?.toLong()?.times(60L)
+                        val end = toMinutes(effective.endTime)?.toLong()?.times(60L)
                         sequenceOf(start, end, end?.minus(600L))
                     }
                     .filterNotNull()
@@ -144,28 +138,30 @@ fun WearApp() {
                         if (!globalReminderEnabled || onHomePage) return@launch
 
                         val nowMinutes = currentSecondOfDay() / 60
-                        val today = todayWeekday()
-                        val events = scheduleStore.getSchedule().events
+                        val todayDate = todayDateString()
+                        val schedule = scheduleStore.getSchedule()
+                        val events = schedule.events
+                        val adjustments = schedule.adjustments
                         val prepEnabled = settingsDataStore.getPrepBell()
 
-                        events.firstOrNull {
-                            it.enabled &&
-                                today in it.weekdays &&
-                                toMinutes(it.startTime) == nowMinutes
-                        }?.let { event ->
-                            showMessage("${eventDisplayName(event)} 开始了")
-                        }
+                        eventsOnDate(events, adjustments, todayDate)
+                            .firstOrNull { toMinutes(it.startTime) == nowMinutes }
+                            ?.let { event ->
+                                showMessage("${eventDisplayName(event)} 开始了")
+                            }
 
                         if (prepEnabled) {
-                            events.firstOrNull {
-                                it.enabled &&
-                                    today in it.weekdays &&
-                                    it.type != ScheduleEventType.BREAK &&
-                                    toMinutes(it.startTime)?.minus(3) == nowMinutes
-                            }?.let { event ->
-                                val name = event.courseName ?: "下一节课"
-                                showMessage("$name 即将开始")
-                            }
+                            eventsOnDate(events, adjustments, todayDate)
+                                .firstOrNull { event ->
+                                    if (event.type == ScheduleEventType.BREAK) return@firstOrNull false
+                                    val startMin = toMinutes(event.startTime)
+                                        ?: return@firstOrNull false
+                                    startMin - 3 == nowMinutes
+                                }
+                                ?.let { event ->
+                                    val name = event.courseName ?: "下一节课"
+                                    showMessage("$name 即将开始")
+                                }
                         }
                     }
                 }

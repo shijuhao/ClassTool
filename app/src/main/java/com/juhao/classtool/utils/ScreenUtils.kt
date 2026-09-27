@@ -33,7 +33,6 @@ fun rememberIsSquareScreen(mode: ScreenShapeMode): Boolean {
 private fun Context.isSquareScreen(): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
     return runCatching {
-        val display = display ?: return true
         val modeInfo = display.mode ?: return true
         val shortSide = minOf(modeInfo.physicalWidth, modeInfo.physicalHeight).toFloat()
         if (shortSide <= 0f) return true

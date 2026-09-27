@@ -26,6 +26,7 @@ import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
 import com.composables.icons.materialsymbols.roundedfilled.Gamepad
+import com.juhao.classtool.datastore.ScheduleAdjustment
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
@@ -52,6 +53,8 @@ fun GreetingScreen(
 
     val scheduleFlow: Flow<List<ScheduleEvent>> = store.scheduleFlow.map { it.events }
     val schedule: List<ScheduleEvent> by scheduleFlow.collectAsState(initial = emptyList())
+    val adjustmentsFlow: Flow<List<ScheduleAdjustment>> = store.scheduleFlow.map { it.adjustments }
+    val adjustments: List<ScheduleAdjustment> by adjustmentsFlow.collectAsState(initial = emptyList())
 
     var prepBellEnabled by remember { mutableStateOf(true) }
     var nowSecondOfDay by remember { mutableIntStateOf(currentSecondOfDay()) }
@@ -64,33 +67,27 @@ fun GreetingScreen(
         }
     }
 
-    val today = todayWeekday()
+    val todayDate = todayDateString()
     val nowMinutes = nowSecondOfDay / 60
 
-    val currentEvent: ScheduleEvent? = remember(schedule, today, nowMinutes) {
-        schedule.firstOrNull { event ->
-            event.enabled &&
-                today in event.weekdays &&
-                toMinutes(event.startTime)?.let { nowMinutes >= it } == true &&
-                toMinutes(event.endTime)?.let { nowMinutes < it } == true
-        }
+    val currentEvent: ScheduleEvent? = remember(schedule, adjustments, todayDate, nowMinutes) {
+        findCurrentEventOnDate(schedule, adjustments, todayDate, nowMinutes)
     }
 
-    val prepEvent: ScheduleEvent? = remember(schedule, today, nowSecondOfDay, prepBellEnabled) {
+    val prepEvent: ScheduleEvent? = remember(schedule, adjustments, todayDate, nowSecondOfDay, prepBellEnabled) {
         if (!prepBellEnabled) return@remember null
-        schedule.firstOrNull { event ->
-            if (!event.enabled) return@firstOrNull false
-            if (today !in event.weekdays) return@firstOrNull false
-            if (event.type == ScheduleEventType.BREAK) return@firstOrNull false
-            val startSec = toMinutes(event.startTime)?.times(60) ?: return@firstOrNull false
-            nowSecondOfDay in (startSec - PREP_BELL_SECONDS) until startSec
-        }
+        eventsOnDate(schedule, adjustments, todayDate).mapNotNull { event ->
+            if (!event.enabled) return@mapNotNull null
+            if (event.type == ScheduleEventType.BREAK) return@mapNotNull null
+            val startSec = toMinutes(event.startTime)?.times(60) ?: return@mapNotNull null
+            if (nowSecondOfDay in (startSec - PREP_BELL_SECONDS) until startSec) event else null
+        }.firstOrNull()
     }
 
-    val displayEvent: ScheduleEvent? = prepEvent ?: currentEvent
+    val activeDisplayEvent: ScheduleEvent? = prepEvent ?: currentEvent
 
-    val startSec = displayEvent?.let { toMinutes(it.startTime)?.times(60) }
-    val endSec = displayEvent?.let { toMinutes(it.endTime)?.times(60) }
+    val startSec = activeDisplayEvent?.let { toMinutes(it.startTime)?.times(60) }
+    val endSec = activeDisplayEvent?.let { toMinutes(it.endTime)?.times(60) }
 
     val isPrep = prepEvent != null
 
@@ -107,11 +104,11 @@ fun GreetingScreen(
     } else 0f
 
     val progressAnim = remember { Animatable(0f) }
-    LaunchedEffect(displayEvent?.id, isPrep) {
-        if (displayEvent == null) progressAnim.snapTo(0f)
+    LaunchedEffect(activeDisplayEvent?.id, isPrep) {
+        if (activeDisplayEvent == null) progressAnim.snapTo(0f)
     }
     LaunchedEffect(targetProgress) {
-        if (displayEvent != null) progressAnim.snapTo(targetProgress)
+        if (activeDisplayEvent != null) progressAnim.snapTo(targetProgress)
     }
 
     val remainingSec = if (isPrep) {
@@ -132,39 +129,29 @@ fun GreetingScreen(
     val titleSize = if (square) 18f else 20f
     val mediumSize = 16f * (1f + 1.5f * finalPartProgress)
 
-    val isActivity = displayEvent?.type == ScheduleEventType.ACTIVITY
-    val showFunny = displayEvent != null && !isActivity
-    val isBreak = displayEvent?.type == ScheduleEventType.BREAK
+    val isActivity = activeDisplayEvent?.type == ScheduleEventType.ACTIVITY
+    val showFunny = activeDisplayEvent != null && !isActivity
+    val isBreak = activeDisplayEvent?.type == ScheduleEventType.BREAK
 
     val funnyTier = when {
         isPrep -> "prep"
         isBreak -> "break"
-        displayEvent == null -> "idle"
+        activeDisplayEvent == null -> "idle"
         remainingSec == null -> "idle"
         remainingSec <= FINAL_SPRINT_SECONDS -> "final"
         targetProgress >= 0.75f -> "near"
         targetProgress >= 0.5f -> "mid"
         else -> "far"
     }
-    val funnyPair = remember(funnyTier, displayEvent?.id) {
+    val funnyPair = remember(funnyTier, activeDisplayEvent?.id) {
         funnyPool(funnyTier).random()
     }
 
     val nextEvent: ScheduleEvent? =
-        remember(schedule, today, nowMinutes, displayEvent?.id) {
-            val activeId = displayEvent?.id
-            schedule
-                .filter {
-                    it.enabled &&
-                        today in it.weekdays &&
-                        it.type != ScheduleEventType.BREAK
-                }
-                .filter { event ->
-                    if (event.id == activeId) return@filter false
-                    val start = toMinutes(event.startTime) ?: return@filter false
-                    start > nowMinutes
-                }
-                .minByOrNull { toMinutes(it.startTime) ?: Int.MAX_VALUE }
+        remember(schedule, adjustments, todayDate, nowMinutes, activeDisplayEvent?.id) {
+            val activeId = activeDisplayEvent?.id
+            upcomingEventsForDate(schedule, adjustments, todayDate, nowMinutes)
+                .firstOrNull { it.id != activeId }
         }
 
     val nextEventMinutes: Int? = nextEvent?.let { event ->
@@ -181,7 +168,7 @@ fun GreetingScreen(
             state = scrollState,
             contentPadding = contentPadding
         ) {
-            if (displayEvent != null) {
+            if (activeDisplayEvent != null) {
                 item {
                     ListHeader(
                         modifier = Modifier
@@ -193,7 +180,7 @@ fun GreetingScreen(
                         transformation = SurfaceTransformation(transformationSpec)
                     ) {
                         Text(
-                            text = eventDisplayName(displayEvent),
+                            text = eventDisplayName(activeDisplayEvent),
                             style = TextStyle(
                                 fontSize = displaySize.sp,
                                 lineHeight = (displaySize * 1.2f).sp,
@@ -216,7 +203,7 @@ fun GreetingScreen(
                 item {
                     Text(
                         text = if (isPrep) "即将开始"
-                        else "${displayEvent.startTime} - ${displayEvent.endTime}",
+                        else "${activeDisplayEvent.startTime} - ${activeDisplayEvent.endTime}",
                         style = TextStyle(
                             fontSize = titleSize.sp,
                             lineHeight = (titleSize * 1.2f).sp

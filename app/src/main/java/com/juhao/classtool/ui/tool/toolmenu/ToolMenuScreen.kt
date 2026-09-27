@@ -52,6 +52,23 @@ fun ToolMenu(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(ToolCountdownNavScreen) },
+                    label = { Text("倒计时") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Hourglass_bottom,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .transformedHeight(this, transformationSpec)
                         .minimumVerticalContentPadding(
                             ButtonDefaults.minimumVerticalListContentPadding

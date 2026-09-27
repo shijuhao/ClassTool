@@ -30,7 +30,6 @@ import com.juhao.classtool.ui.components.RoundToast
 import com.juhao.classtool.utils.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.LocalTime
 import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -78,8 +77,11 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
     var actionEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
     var deleteEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
 
-    val schedule by produceState(initialValue = emptyList(), refreshKey) {
+    val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
         value = store.getSchedule().events
+    }
+    val adjustments by produceState(initialValue = emptyList<com.juhao.classtool.datastore.ScheduleAdjustment>(), refreshKey) {
+        value = store.getSchedule().adjustments
     }
 
     var nowMinutes by remember { mutableIntStateOf(currentMinutes()) }
@@ -120,8 +122,10 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                     if (result.valid) {
                         refreshKey++
                         showDialog = false
+                        RoundToast.show(context, "操作成功")
+                    } else {
+                        RoundToast.show(context, result.reason ?: "操作失败")
                     }
-                    RoundToast.show(context, "操作成功")
                 }
             }
         )
@@ -245,14 +249,18 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
         HorizontalPager(state = pagerState) { page ->
             val isAllPage = page == 0
             val weekday = if (isAllPage) null else weekdays[page - 1]
+            val date = if (isAllPage) null else dateForWeekdayThisWeek(weekday!!)
             val listState = rememberTransformingLazyColumnState()
             val square = LocalScreenShape.current == ScreenShape.SQUARE
             val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
-            val dayEvents = schedule
-                .filter { it.enabled && (isAllPage || weekday in it.weekdays) }
-                .sortedWith(compareBy({ it.startTime }, { it.weekdays.firstOrNull()?.ordinal ?: 0 }))
-                .filterNot { e -> e.type == ScheduleEventType.BREAK }
+            val dayEvents = if (isAllPage) {
+                schedule.filter { it.enabled && it.type != ScheduleEventType.BREAK }
+                    .sortedWith(compareBy({ it.startTime }, { it.weekdays.firstOrNull()?.ordinal ?: 0 }))
+            } else {
+                eventsForWeekday(schedule, adjustments, weekday!!, date!!)
+                    .filter { it.type != ScheduleEventType.BREAK }
+            }
 
             val addButtonIsLast = dayEvents.isEmpty()
 
@@ -299,14 +307,13 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
                         )
                     }
 
-                    items(count = dayEvents.size, key = { dayEvents[it].id }) { index ->
+                    items(count = dayEvents.size, key = { dayEvents[it].id + (date ?: "") }) { index ->
                         val event = dayEvents[index]
                         val isLast = index == dayEvents.lastIndex
                         val start = toMinutes(event.startTime)
                         val end = toMinutes(event.endTime)
                         val highlighted = !isAllPage &&
                                 weekday == today &&
-                                today in event.weekdays &&
                                 start != null && end != null &&
                                 nowMinutes in start until end
 
@@ -756,25 +763,6 @@ private fun TimeButton(label: String, time: String, onClick: () -> Unit) {
     )
 }
 
-@Composable
-private fun WearTimePicker(
-    initial: String,
-    onConfirm: (String) -> Unit,
-    onCancel: () -> Unit
-) {
-    val parts = initial.split(":")
-    val hour = parts.getOrNull(0)?.toIntOrNull() ?: 8
-    val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
-
-    BackHandler { onCancel() }
-
-    TimePicker(
-        initialTime = LocalTime.of(hour, minute),
-        onTimePicked = { time -> onConfirm("%02d:%02d".format(time.hour, time.minute)) },
-        timePickerType = TimePickerType.HoursMinutes24H
-    )
-}
-
 private fun hasConflict(
     startTime: String,
     endTime: String,
@@ -800,10 +788,4 @@ private fun scopeOf(days: Set<Weekday>): WeekdayScope = when (days) {
     WORKDAYS -> WeekdayScope.WORKDAY
     WEEKEND -> WeekdayScope.WEEKEND
     else -> WeekdayScope.CUSTOM
-}
-
-private fun addMinutes(time: String, minutes: Int): String {
-    val base = toMinutes(time) ?: return "08:45"
-    val total = (base + minutes).coerceAtMost(23 * 60 + 59)
-    return "%02d:%02d".format(total / 60, total % 60)
 }

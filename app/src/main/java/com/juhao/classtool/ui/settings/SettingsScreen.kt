@@ -22,7 +22,8 @@ private val UI_SCALE_STEPS = (5..15 step 1).map { it / 10f }
 
 @Composable
 fun SettingsScreen(
-    onNavigateToBackup: () -> Unit = {}
+    onNavigateToBackup: () -> Unit = {},
+    onNavigateToAdjustment: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -60,6 +61,25 @@ fun SettingsScreen(
                             ),
                     transformation = SurfaceTransformation(transformationSpec)
                 ) { Text(text = "设置") }
+            }
+            
+            item {
+                FilledTonalButton(
+                    onClick = onNavigateToAdjustment,
+                    label = { Text("调休") },
+                    secondaryLabel = { Text("把某星期的课调到另一星期") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Swap_horiz,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
             }
 
             item {
@@ -267,7 +287,7 @@ fun SettingsScreen(
                 val currentIndex = UI_SCALE_STEPS
                     .indexOfFirst { it >= uiScale - 0.001f }
                     .coerceAtLeast(0)
-            
+
                 SliderSettingCard(
                     modifier = Modifier.transformedHeight(this, transformationSpec),
                     title = "UI 缩放",

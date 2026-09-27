@@ -36,6 +36,8 @@ data class TodoDetailNavScreen(val id: Long) : AppKey
 data object ToolMenuNavScreen : AppKey
 @Serializable
 data object TimerNavScreen : AppKey
+@Serializable
+data object ToolCountdownNavScreen : AppKey
 
 @Serializable
 data object GameMenuNavScreen : AppKey
@@ -52,3 +54,6 @@ data object SettingsNavScreen : AppKey
 data object BackupRestoreNavScreen : AppKey
 @Serializable
 data object AboutNavScreen : AppKey
+
+@Serializable
+data object AdjustmentNavScreen : AppKey

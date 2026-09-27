@@ -22,6 +22,7 @@ import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
+import com.juhao.classtool.datastore.SettingsDataStore
 import com.juhao.classtool.datastore.Weekday
 import com.juhao.classtool.ui.components.RoundToast
 import com.juhao.classtool.utils.*
@@ -51,6 +52,9 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { ScheduleDataStore(context) }
+    val settingsStore = remember { SettingsDataStore(context) }
+
+    val classDuration by settingsStore.classDurationFlow.collectAsState(initial = 40)
 
     val weekdays = Weekday.entries.toList()
     val today = todayWeekday()
@@ -60,8 +64,11 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
     )
 
     var refreshKey by remember { mutableIntStateOf(0) }
-    val schedule by produceState(initialValue = emptyList(), refreshKey) {
+    val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
         value = store.getSchedule().events
+    }
+    val adjustments by produceState(initialValue = emptyList<com.juhao.classtool.datastore.ScheduleAdjustment>(), refreshKey) {
+        value = store.getSchedule().adjustments
     }
 
     var editingEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
@@ -85,17 +92,13 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
     HorizontalPagerScaffold(pagerState = pagerState, modifier = modifier) {
         HorizontalPager(state = pagerState) { page ->
             val weekday = weekdays[page]
+            val date = dateForWeekdayThisWeek(weekday)
             val listState = rememberTransformingLazyColumnState()
             val square = LocalScreenShape.current == ScreenShape.SQUARE
             val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
-            val dayClasses = schedule
-                .filter {
-                    it.enabled &&
-                        it.type == ScheduleEventType.CLASS &&
-                        weekday in it.weekdays
-                }
-                .sortedBy { it.startTime }
+            val dayClasses = eventsForWeekday(schedule, adjustments, weekday, date)
+                .filter { it.type == ScheduleEventType.CLASS }
 
             ScreenScaffold(scrollState = listState) { contentPadding ->
                 TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
@@ -132,6 +135,7 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
                     items(count = dayClasses.size, key = { dayClasses[it].id }) { index ->
                         val event = dayClasses[index]
                         val isLast = index == dayClasses.lastIndex
+
                         CourseEditButton(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -154,6 +158,14 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
     }
 }
 
+fun dateForWeekdayThisWeek(weekday: Weekday): String {
+    val today = java.time.LocalDate.now()
+    val todayValue = today.dayOfWeek.value
+    val targetValue = weekday.ordinal + 1
+    val diff = targetValue - todayValue
+    return today.plusDays(diff.toLong()).toString()
+}
+
 @Composable
 private fun CourseEditButton(
     modifier: Modifier = Modifier,
@@ -172,7 +184,9 @@ private fun CourseEditButton(
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
         label = { Text(event.courseName ?: "点击设置课程") },
-        secondaryLabel = { Text("${event.startTime} - ${event.endTime}") },
+        secondaryLabel = {
+            Text("${event.startTime} - ${event.endTime}")
+        },
         icon = {
             Box(
                 Modifier
