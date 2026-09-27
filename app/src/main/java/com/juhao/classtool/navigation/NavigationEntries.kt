@@ -13,11 +13,14 @@ import com.juhao.classtool.ui.tool.*
 import com.juhao.classtool.ui.tool.toolmenu.ToolMenu
 
 fun EntryProviderScope<NavKey>.scheduleEntries() {
-    entry<EditScheduleNavScreen> {
-        EditScheduleScreen()
+    entry<TimeTableNavScreen> {
+        TimeTableScreen()
     }
-    entry<CourseScheduleNavScreen> {
-        CourseScheduleScreen()
+    entry<CourseTableNavScreen> {
+        CourseTableScreen()
+    }
+    entry<AdjustmentNavScreen> {
+        AdjustmentScreen()
     }
 }
 
@@ -126,8 +129,5 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     }
     entry<AboutNavScreen> {
         AboutScreen()
-    }
-    entry<AdjustmentNavScreen> {
-        AdjustmentScreen()
     }
 }

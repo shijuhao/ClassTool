@@ -89,11 +89,15 @@ fun WearApp() {
                 val events = schedule.events
                 val adjustments = schedule.adjustments
                 val todayDate = todayDateString()
+                val todayWeekdayValue = todayWeekday()
                 val nowSec = currentSecondOfDay()
                 val nowMinutes = nowSec / 60
 
                 val active = findCurrentEventOnDate(events, adjustments, todayDate, nowMinutes)
-                currentEventColor = active?.courseColor?.let { parseColor(it) }
+                val activeColorHex = active?.let {
+                    it.courseColorByWeekday[todayWeekdayValue] ?: it.courseColor
+                }
+                currentEventColor = activeColorHex?.let { parseColor(it) }
 
                 val remaining = active?.let {
                     (toMinutes(it.endTime) ?: Int.MAX_VALUE) - nowMinutes
@@ -139,6 +143,7 @@ fun WearApp() {
 
                         val nowMinutes = currentSecondOfDay() / 60
                         val todayDate = todayDateString()
+                        val todayWeekdayValue = todayWeekday()
                         val schedule = scheduleStore.getSchedule()
                         val events = schedule.events
                         val adjustments = schedule.adjustments
@@ -147,7 +152,7 @@ fun WearApp() {
                         eventsOnDate(events, adjustments, todayDate)
                             .firstOrNull { toMinutes(it.startTime) == nowMinutes }
                             ?.let { event ->
-                                showMessage("${eventDisplayName(event)} 开始了")
+                                showMessage("${eventDisplayNameFor(event, todayWeekdayValue)} 开始了")
                             }
 
                         if (prepEnabled) {
@@ -159,7 +164,9 @@ fun WearApp() {
                                     startMin - 3 == nowMinutes
                                 }
                                 ?.let { event ->
-                                    val name = event.courseName ?: "下一节课"
+                                    val name = event.courseNameByWeekday[todayWeekdayValue]
+                                        ?: event.courseName
+                                        ?: "下一节课"
                                     showMessage("$name 即将开始")
                                 }
                         }

@@ -99,7 +99,7 @@ object RoundToast {
 
         val dialog = Dialog(
             activity,
-            android.R.style.Theme_Translucent_NoTitleBar
+            android.R.style.Theme_Translucent_NoTitleBar_Fullscreen
         )
 
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)

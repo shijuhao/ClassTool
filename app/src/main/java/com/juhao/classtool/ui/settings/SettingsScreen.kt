@@ -41,7 +41,7 @@ fun SettingsScreen(
     val classDuration by store.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by store.breakDurationFlow.collectAsState(initial = 10)
     val uiScale by store.uiScaleFlow.collectAsState(initial = 1.0f)
-    val dynamicTheme by store.dynamicThemeFlow.collectAsState(initial = false)
+    val dynamicTheme by store.dynamicThemeFlow.collectAsState(initial = true)
 
     ScreenScaffold(
         scrollState = listState

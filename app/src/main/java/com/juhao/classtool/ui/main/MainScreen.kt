@@ -68,6 +68,7 @@ fun GreetingScreen(
     }
 
     val todayDate = todayDateString()
+    val todayWeekdayValue = todayWeekday()
     val nowMinutes = nowSecondOfDay / 60
 
     val currentEvent: ScheduleEvent? = remember(schedule, adjustments, todayDate, nowMinutes) {
@@ -180,7 +181,7 @@ fun GreetingScreen(
                         transformation = SurfaceTransformation(transformationSpec)
                     ) {
                         Text(
-                            text = eventDisplayName(activeDisplayEvent),
+                            text = eventDisplayNameFor(activeDisplayEvent, todayWeekdayValue),
                             style = TextStyle(
                                 fontSize = displaySize.sp,
                                 lineHeight = (displaySize * 1.2f).sp,
@@ -363,7 +364,8 @@ fun GreetingScreen(
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec),
                         transformation = SurfaceTransformation(transformationSpec),
-                        event = nextEvent
+                        event = nextEvent,
+                        weekday = todayWeekdayValue
                     )
                 }
 
@@ -389,7 +391,7 @@ fun GreetingScreen(
 
             item {
                 FilledTonalButton(
-                    onClick = { onChangePage(EditScheduleNavScreen) },
+                    onClick = { onChangePage(TimeTableNavScreen) },
                     label = { Text("时间表") },
                     icon = {
                         Icon(
@@ -406,7 +408,7 @@ fun GreetingScreen(
 
             item {
                 FilledTonalButton(
-                    onClick = { onChangePage(CourseScheduleNavScreen) },
+                    onClick = { onChangePage(CourseTableNavScreen) },
                     label = { Text("课程表") },
                     icon = {
                         Icon(

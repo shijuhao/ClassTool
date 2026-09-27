@@ -10,9 +10,9 @@ sealed interface AppKey : NavKey
 data object MenuScreen : AppKey
 
 @Serializable
-data object EditScheduleNavScreen : AppKey
+data object TimeTableNavScreen : AppKey
 @Serializable
-data object CourseScheduleNavScreen : AppKey
+data object CourseTableNavScreen : AppKey
 
 @Serializable
 data object CountdownNavScreen : AppKey

@@ -55,6 +55,8 @@ data class ScheduleEvent(
     val type: ScheduleEventType,
     val courseName: String? = null,
     val courseColor: String? = null,
+    val courseNameByWeekday: Map<Weekday, String> = emptyMap(),
+    val courseColorByWeekday: Map<Weekday, String> = emptyMap(),
     val enabled: Boolean = true,
     val urgent: Boolean = false,
     val transfers: List<ScheduleTransfer> = emptyList()
@@ -403,6 +405,59 @@ class ScheduleDataStore(private val context: Context) {
                 events = current.events.map { event ->
                     if (event.id == id) {
                         event.copy(courseName = null, courseColor = null)
+                    } else {
+                        event
+                    }
+                }
+            )
+            preferences[scheduleKey] = json.encodeToString(updated)
+        }
+    }
+
+    suspend fun setCourseForWeekday(
+        id: String,
+        weekday: Weekday,
+        name: String,
+        color: String? = null
+    ) {
+        require(name.isNotBlank()) { "name must not be blank" }
+        dataStore.edit { preferences ->
+            val current = preferences[scheduleKey]
+                ?.let { runCatching { json.decodeFromString<Schedule>(it) }.getOrNull() }
+                ?: Schedule()
+            val updated = current.copy(
+                events = current.events.map { event ->
+                    if (event.id == id) {
+                        event.copy(
+                            type = ScheduleEventType.CLASS,
+                            courseNameByWeekday = event.courseNameByWeekday + (weekday to name),
+                            courseColorByWeekday = if (color != null) {
+                                event.courseColorByWeekday + (weekday to color)
+                            } else {
+                                event.courseColorByWeekday - weekday
+                            }
+                        )
+                    } else {
+                        event
+                    }
+                }
+            )
+            preferences[scheduleKey] = json.encodeToString(updated)
+        }
+    }
+
+    suspend fun clearCourseForWeekday(id: String, weekday: Weekday) {
+        dataStore.edit { preferences ->
+            val current = preferences[scheduleKey]
+                ?.let { runCatching { json.decodeFromString<Schedule>(it) }.getOrNull() }
+                ?: Schedule()
+            val updated = current.copy(
+                events = current.events.map { event ->
+                    if (event.id == id) {
+                        event.copy(
+                            courseNameByWeekday = event.courseNameByWeekday - weekday,
+                            courseColorByWeekday = event.courseColorByWeekday - weekday
+                        )
                     } else {
                         event
                     }

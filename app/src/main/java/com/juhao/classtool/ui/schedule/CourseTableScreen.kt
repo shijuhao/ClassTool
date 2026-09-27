@@ -48,7 +48,7 @@ private val presetCourses = listOf(
 )
 
 @Composable
-fun CourseScheduleScreen(modifier: Modifier = Modifier) {
+fun CourseTableScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { ScheduleDataStore(context) }
@@ -72,18 +72,26 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
     }
 
     var editingEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
+    var editingWeekday by remember { mutableStateOf<Weekday?>(null) }
 
-    editingEvent?.let { target ->
+    val editTarget = editingEvent
+    val editWeekday = editingWeekday
+    if (editTarget != null && editWeekday != null) {
         CourseEditDialog(
-            event = target,
-            onDismiss = { editingEvent = null },
+            event = editTarget,
+            weekday = editWeekday,
+            onDismiss = {
+                editingEvent = null
+                editingWeekday = null
+            },
             onConfirm = { name, color ->
                 scope.launch {
-                    if (name == null) store.clearCourse(target.id)
-                    else store.setCourse(target.id, name, color)
+                    if (name == null) store.clearCourseForWeekday(editTarget.id, editWeekday)
+                    else store.setCourseForWeekday(editTarget.id, editWeekday, name, color)
                     refreshKey++
                 }
                 editingEvent = null
+                editingWeekday = null
                 RoundToast.show(context, "设置成功")
             }
         )
@@ -149,7 +157,11 @@ fun CourseScheduleScreen(modifier: Modifier = Modifier) {
                                 ),
                             transformation = SurfaceTransformation(transformationSpec),
                             event = event,
-                            onClick = { editingEvent = event }
+                            weekday = weekday,
+                            onClick = {
+                                editingEvent = event
+                                editingWeekday = weekday
+                            }
                         )
                     }
                 }
@@ -171,9 +183,12 @@ private fun CourseEditButton(
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
     event: ScheduleEvent,
+    weekday: Weekday,
     onClick: () -> Unit
 ) {
-    val color = event.courseColor?.let { parseColor(it) }
+    val name = event.courseNameByWeekday[weekday] ?: event.courseName
+    val colorHex = event.courseColorByWeekday[weekday] ?: event.courseColor
+    val color = colorHex?.let { parseColor(it) }
         ?: MaterialTheme.colorScheme.onSurfaceVariant
 
     FilledTonalButton(
@@ -183,7 +198,7 @@ private fun CourseEditButton(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        label = { Text(event.courseName ?: "点击设置课程") },
+        label = { Text(name ?: "点击设置课程") },
         secondaryLabel = {
             Text("${event.startTime} - ${event.endTime}")
         },
@@ -202,14 +217,18 @@ private fun CourseEditButton(
 @Composable
 private fun CourseEditDialog(
     event: ScheduleEvent,
+    weekday: Weekday,
     onDismiss: () -> Unit,
     onConfirm: (String?, String?) -> Unit
 ) {
-    var selectedName by remember { mutableStateOf(event.courseName) }
-    var selectedColor by remember { mutableStateOf(event.courseColor) }
+    val currentName = event.courseNameByWeekday[weekday] ?: event.courseName
+    val currentColor = event.courseColorByWeekday[weekday] ?: event.courseColor
+
+    var selectedName by remember { mutableStateOf(currentName) }
+    var selectedColor by remember { mutableStateOf(currentColor) }
     var isCustom by remember {
         mutableStateOf(
-            event.courseName != null && presetCourses.none { it.first == event.courseName }
+            currentName != null && presetCourses.none { it.first == currentName }
         )
     }
     var showCustomDialog by remember { mutableStateOf(false) }
@@ -218,7 +237,7 @@ private fun CourseEditDialog(
         CustomPresetDialog(
             title = "自定义课程",
             placeholder = "输入名称",
-            initialName = if (isCustom) event.courseName ?: "" else "",
+            initialName = if (isCustom) currentName ?: "" else "",
             initialColor = selectedColor,
             onDismiss = { showCustomDialog = false },
             onConfirm = { name, color ->
@@ -234,7 +253,7 @@ private fun CourseEditDialog(
     AlertDialog(
         visible = true,
         onDismissRequest = onDismiss,
-        title = { Text("设置课程") },
+        title = { Text("${weekdayLabel(weekday)} 课程") },
         confirmButton = {
             AlertDialogDefaults.ConfirmButton(
                 onClick = {
@@ -306,7 +325,7 @@ private fun CourseEditDialog(
             }
         }
 
-        if (event.courseName != null) {
+        if (currentName != null) {
             item {
                 FilledTonalButton(
                     onClick = {

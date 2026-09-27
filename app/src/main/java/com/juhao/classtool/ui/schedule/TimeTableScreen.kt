@@ -2,6 +2,7 @@ package com.juhao.classtool.ui.schedule
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,8 +15,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
-import androidx.wear.compose.foundation.pager.HorizontalPager
-import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
@@ -23,6 +22,7 @@ import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
+import com.juhao.classtool.datastore.ScheduleValidationResult
 import com.juhao.classtool.datastore.SettingsDataStore
 import com.juhao.classtool.datastore.Weekday
 import com.juhao.classtool.datastore.WeekdayScope
@@ -52,8 +52,14 @@ private val activityPresets = listOf(
 
 private enum class DialogStage { EDIT, START_TIME, END_TIME }
 
+private fun eventListDisplayName(event: ScheduleEvent): String = when (event.type) {
+    ScheduleEventType.BREAK -> "课间休息"
+    ScheduleEventType.CLASS -> "上课"
+    ScheduleEventType.ACTIVITY -> event.courseName ?: "活动"
+}
+
 @Composable
-fun EditScheduleScreen(modifier: Modifier = Modifier) {
+fun TimeTableScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { ScheduleDataStore(context) }
@@ -62,16 +68,10 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
     val classDuration by settingsStore.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by settingsStore.breakDurationFlow.collectAsState(initial = 10)
 
-    val weekdays = Weekday.entries.toList()
     val today = todayWeekday()
-    val pagerState = rememberPagerState(
-        initialPage = weekdays.indexOf(today).coerceAtLeast(0) + 1,
-        pageCount = { weekdays.size + 1 }
-    )
 
     var showDialog by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
-    var newEventWeekday by remember { mutableStateOf(today) }
     var refreshKey by remember { mutableIntStateOf(0) }
 
     var actionEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
@@ -94,30 +94,36 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
 
     if (showDialog) {
         BackHandler { showDialog = false }
-        val currentWeekday = if (pagerState.currentPage == 0) {
-            newEventWeekday
-        } else {
-            weekdays[pagerState.currentPage - 1]
+        val lastEvent = remember(schedule, editingEvent) {
+            if (editingEvent != null) null
+            else schedule
+                .filter { it.enabled }
+                .maxByOrNull { toMinutes(it.endTime) ?: Int.MIN_VALUE }
         }
-        val defaultStart = schedule
-            .filter { currentWeekday in it.weekdays }
-            .maxOfOrNull { it.endTime }
-            ?: "08:00"
+        val defaultStart = lastEvent?.endTime ?: "08:00"
+        val defaultType = when (lastEvent?.type) {
+            ScheduleEventType.BREAK -> ScheduleEventType.CLASS
+            ScheduleEventType.CLASS -> ScheduleEventType.BREAK
+            else -> ScheduleEventType.CLASS
+        }
 
         EventEditDialog(
-            weekday = currentWeekday,
+            weekday = today,
             existing = editingEvent,
             defaultStartTime = if (editingEvent == null) defaultStart else null,
+            defaultType = if (editingEvent == null) defaultType else null,
             classDuration = classDuration,
             breakDuration = breakDuration,
             allEvents = schedule,
             onDismiss = { showDialog = false },
-            onConfirm = { events ->
+            onConfirm = { event ->
                 scope.launch {
-                    val result = if (editingEvent == null) {
-                        store.addEvents(events)
+                    val result = if (event == null) {
+                        ScheduleValidationResult(true)
+                    } else if (editingEvent != null) {
+                        store.updateEvent(event)
                     } else {
-                        store.updateEvent(events.first())
+                        store.addEvent(event)
                     }
                     if (result.valid) {
                         refreshKey++
@@ -136,7 +142,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
         AlertDialog(
             visible = true,
             onDismissRequest = { actionEvent = null },
-            title = { Text(eventDisplayName(target)) },
+            title = { Text(eventListDisplayName(target)) },
             text = {
                 Text(
                     text = "${target.startTime} - ${target.endTime}",
@@ -204,7 +210,7 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
             visible = true,
             onDismissRequest = { deleteEvent = null },
             title = { Text("删除事件") },
-            text = { Text("确定要删除「${eventDisplayName(target)}」吗？此操作无法撤销。") },
+            text = { Text("确定要删除「${eventListDisplayName(target)}」吗？此操作无法撤销。") },
             edgeButton = {
                 AlertDialogDefaults.EdgeButton(
                     onClick = { deleteEvent = null },
@@ -245,104 +251,137 @@ fun EditScheduleScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    HorizontalPagerScaffold(pagerState = pagerState, modifier = modifier) {
-        HorizontalPager(state = pagerState) { page ->
-            val isAllPage = page == 0
-            val weekday = if (isAllPage) null else weekdays[page - 1]
-            val date = if (isAllPage) null else dateForWeekdayThisWeek(weekday!!)
-            val listState = rememberTransformingLazyColumnState()
-            val square = LocalScreenShape.current == ScreenShape.SQUARE
-            val transformationSpec = rememberAdaptiveTransformationSpec(square)
+    val listState = rememberTransformingLazyColumnState()
+    val square = LocalScreenShape.current == ScreenShape.SQUARE
+    val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
-            val dayEvents = if (isAllPage) {
-                schedule.filter { it.enabled && it.type != ScheduleEventType.BREAK }
-                    .sortedWith(compareBy({ it.startTime }, { it.weekdays.firstOrNull()?.ordinal ?: 0 }))
-            } else {
-                eventsForWeekday(schedule, adjustments, weekday!!, date!!)
-                    .filter { it.type != ScheduleEventType.BREAK }
+    val displayEvents = remember(schedule) {
+        schedule.filter { it.enabled }.sortedBy { toMinutes(it.startTime) ?: Int.MAX_VALUE }
+    }
+    val addButtonIsLast = displayEvents.isEmpty()
+
+    ScreenScaffold(scrollState = listState) { contentPadding ->
+        TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
+            item {
+                ListHeader(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                        .minimumVerticalContentPadding(
+                            ListHeaderDefaults.minimumTopListContentPadding
+                        ),
+                    transformation = SurfaceTransformation(transformationSpec)
+                ) { Text("时间表") }
             }
 
-            val addButtonIsLast = dayEvents.isEmpty()
-
-            ScreenScaffold(scrollState = listState) { contentPadding ->
-                TransformingLazyColumn(state = listState, contentPadding = contentPadding) {
-                    item {
-                        ListHeader(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec)
-                                .minimumVerticalContentPadding(
-                                    ListHeaderDefaults.minimumTopListContentPadding
-                                ),
-                            transformation = SurfaceTransformation(transformationSpec)
-                        ) { Text(if (isAllPage) "全部事件" else weekdayLabel(weekday!!)) }
-                    }
-
-                    item {
-                        FilledTonalButton(
-                            onClick = {
-                                editingEvent = null
-                                newEventWeekday = weekday ?: today
-                                showDialog = true
-                            },
-                            transformation = SurfaceTransformation(transformationSpec),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec)
-                                .then(
-                                    if (addButtonIsLast) {
-                                        Modifier.minimumVerticalContentPadding(
-                                            ButtonDefaults.minimumVerticalListContentPadding
-                                        )
-                                    } else Modifier
-                                ),
-                            label = { Text("新增事件") },
-                            icon = {
-                                Icon(
-                                    imageVector = MaterialSymbols.Rounded.Add,
-                                    contentDescription = "新增事件",
-                                    modifier = Modifier.size(ButtonDefaults.IconSize)
+            item {
+                FilledTonalButton(
+                    onClick = {
+                        editingEvent = null
+                        showDialog = true
+                    },
+                    transformation = SurfaceTransformation(transformationSpec),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                        .then(
+                            if (addButtonIsLast) {
+                                Modifier.minimumVerticalContentPadding(
+                                    ButtonDefaults.minimumVerticalListContentPadding
                                 )
-                            }
+                            } else Modifier
+                        ),
+                    label = { Text("新增事件") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Add,
+                            contentDescription = "新增事件",
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
                     }
+                )
+            }
 
-                    items(count = dayEvents.size, key = { dayEvents[it].id + (date ?: "") }) { index ->
-                        val event = dayEvents[index]
-                        val isLast = index == dayEvents.lastIndex
-                        val start = toMinutes(event.startTime)
-                        val end = toMinutes(event.endTime)
-                        val highlighted = !isAllPage &&
-                                weekday == today &&
-                                start != null && end != null &&
-                                nowMinutes in start until end
+            items(count = displayEvents.size, key = { displayEvents[it].id }) { index ->
+                val event = displayEvents[index]
+                val isLast = index == displayEvents.lastIndex
+                val start = toMinutes(event.startTime)
+                val end = toMinutes(event.endTime)
+                val highlighted = today in event.weekdays &&
+                        start != null && end != null &&
+                        nowMinutes in start until end
 
-                        ScheduleEventCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec)
-                                .then(
-                                    if (isLast) {
-                                        Modifier.minimumVerticalContentPadding(
-                                            ButtonDefaults.minimumVerticalListContentPadding
-                                        )
-                                    } else Modifier
-                                ),
-                            transformation = SurfaceTransformation(transformationSpec),
-                            event = event,
-                            highlighted = highlighted,
-                            showWeekdayBadge = isAllPage,
-                            onClick = {
-                                editingEvent = event
-                                showDialog = true
-                            },
-                            onLongClick = { actionEvent = event }
-                        )
-                    }
-                }
+                EventListCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                        .then(
+                            if (isLast) {
+                                Modifier.minimumVerticalContentPadding(
+                                    ButtonDefaults.minimumVerticalListContentPadding
+                                )
+                            } else Modifier
+                        ),
+                    transformation = SurfaceTransformation(transformationSpec),
+                    event = event,
+                    highlighted = highlighted,
+                    displayName = eventListDisplayName(event),
+                    onClick = {
+                        editingEvent = event
+                        showDialog = true
+                    },
+                    onLongClick = { actionEvent = event }
+                )
             }
         }
     }
+}
+
+@Composable
+private fun EventListCard(
+    modifier: Modifier = Modifier,
+    transformation: SurfaceTransformation? = null,
+    event: ScheduleEvent,
+    highlighted: Boolean = false,
+    displayName: String,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {}
+) {
+    val dotColor = when (event.type) {
+        ScheduleEventType.BREAK -> MaterialTheme.colorScheme.onSurfaceVariant
+        ScheduleEventType.CLASS -> MaterialTheme.colorScheme.primary
+        ScheduleEventType.ACTIVITY -> event.courseColor?.let { parseColor(it) }
+            ?: MaterialTheme.colorScheme.onSurface
+    }
+
+    FilledTonalButton(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        transformation = transformation,
+        label = { Text(displayName) },
+        secondaryLabel = {
+            val time = "${event.startTime} - ${event.endTime}"
+            val suffix = "  ${weekdayScopeLabel(event.weekdays)}"
+            Text("$time$suffix")
+        },
+        icon = {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(dotColor)
+            )
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (highlighted) Modifier.border(
+                    2.dp,
+                    MaterialTheme.colorScheme.primaryContainer,
+                    RoundedCornerShape(50.dp)
+                ) else Modifier
+            )
+    )
 }
 
 @Composable
@@ -350,19 +389,21 @@ private fun EventEditDialog(
     weekday: Weekday,
     existing: ScheduleEvent?,
     defaultStartTime: String?,
+    defaultType: ScheduleEventType?,
     classDuration: Int,
     breakDuration: Int,
     allEvents: List<ScheduleEvent>,
     onDismiss: () -> Unit,
-    onConfirm: (List<ScheduleEvent>) -> Unit
+    onConfirm: (ScheduleEvent?) -> Unit
 ) {
     fun durationFor(t: ScheduleEventType) =
         if (t == ScheduleEventType.BREAK) breakDuration else classDuration
 
     val initialStart = existing?.startTime ?: defaultStartTime ?: "08:00"
-    val initialEnd = existing?.endTime ?: addMinutes(initialStart, durationFor(ScheduleEventType.CLASS))
+    val initialType = existing?.type ?: defaultType ?: ScheduleEventType.CLASS
+    val initialEnd = existing?.endTime ?: addMinutes(initialStart, durationFor(initialType))
 
-    var type by remember { mutableStateOf(existing?.type ?: ScheduleEventType.CLASS) }
+    var type by remember { mutableStateOf(initialType) }
     var name by remember { mutableStateOf(existing?.courseName ?: "") }
     var color by remember { mutableStateOf(existing?.courseColor) }
     var startTime by remember { mutableStateOf(initialStart) }
@@ -376,6 +417,15 @@ private fun EventEditDialog(
     var showCustomActivityDialog by remember { mutableStateOf(false) }
     var urgent by remember { mutableStateOf(existing?.urgent ?: false) }
 
+    LaunchedEffect(defaultStartTime, defaultType) {
+        if (defaultStartTime != null && existing == null) {
+            startTime = defaultStartTime
+            if (!userEditedEnd) {
+                endTime = addMinutes(defaultStartTime, durationFor(type))
+            }
+        }
+    }
+
     LaunchedEffect(type) {
         if (!userEditedEnd) endTime = addMinutes(startTime, durationFor(type))
     }
@@ -388,8 +438,9 @@ private fun EventEditDialog(
         }
     }
 
-    val conflict = remember(startTime, endTime, allEvents, existing, selectedDays) {
-        hasConflict(startTime, endTime, selectedDays, allEvents, existing?.id)
+    val selfIds = existing?.let { setOf(it.id) } ?: emptySet()
+    val conflict = remember(startTime, endTime, allEvents, selfIds, selectedDays) {
+        hasConflict(startTime, endTime, selectedDays, allEvents, selfIds)
     }
 
     if (stage == DialogStage.START_TIME || stage == DialogStage.END_TIME) {
@@ -451,38 +502,25 @@ private fun EventEditDialog(
                         ScheduleEventType.BREAK -> null
                     }
 
-                    if (existing != null) {
-                        onConfirm(
-                            listOf(
-                                existing.copy(
-                                    weekdays = selectedDays,
-                                    startTime = startTime,
-                                    endTime = endTime,
-                                    type = type,
-                                    courseName = resolvedName,
-                                    courseColor = resolvedColor,
-                                    urgent = urgent
-                                )
-                            )
-                        )
-                    } else {
-                        val events = selectedDays
-                            .sortedBy { it.ordinal }
-                            .map { day ->
-                                ScheduleEvent(
-                                    id = UUID.randomUUID().toString(),
-                                    weekdays = setOf(day),
-                                    startTime = startTime,
-                                    endTime = endTime,
-                                    type = type,
-                                    courseName = resolvedName,
-                                    courseColor = resolvedColor,
-                                    enabled = true,
-                                    urgent = urgent
-                                )
-                            }
-                        onConfirm(events)
-                    }
+                    val filteredNameByWeekday = existing?.courseNameByWeekday
+                        ?.filterKeys { it in selectedDays } ?: emptyMap()
+                    val filteredColorByWeekday = existing?.courseColorByWeekday
+                        ?.filterKeys { it in selectedDays } ?: emptyMap()
+
+                    val event = ScheduleEvent(
+                        id = existing?.id ?: UUID.randomUUID().toString(),
+                        weekdays = selectedDays,
+                        startTime = startTime,
+                        endTime = endTime,
+                        type = type,
+                        courseName = resolvedName,
+                        courseColor = resolvedColor,
+                        courseNameByWeekday = filteredNameByWeekday,
+                        courseColorByWeekday = filteredColorByWeekday,
+                        enabled = true,
+                        urgent = urgent
+                    )
+                    onConfirm(event)
                 }
             )
         },
@@ -768,7 +806,7 @@ private fun hasConflict(
     endTime: String,
     selectedDays: Set<Weekday>,
     allEvents: List<ScheduleEvent>,
-    selfId: String?
+    selfIds: Set<String>
 ): Boolean {
     val newStart = toMinutes(startTime)
     val newEnd = toMinutes(endTime)
@@ -776,7 +814,7 @@ private fun hasConflict(
     if (selectedDays.isEmpty()) return true
     return allEvents.any { other ->
         other.enabled &&
-            other.id != selfId &&
+            other.id !in selfIds &&
             selectedDays.intersect(other.weekdays).isNotEmpty() &&
             toMinutes(other.startTime)?.let { os ->
                 toMinutes(other.endTime)?.let { oe -> newStart < oe && os < newEnd }

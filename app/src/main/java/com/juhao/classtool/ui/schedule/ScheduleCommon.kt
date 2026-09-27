@@ -54,6 +54,20 @@ fun eventDisplayName(event: ScheduleEvent): String = event.courseName
         ScheduleEventType.CLASS -> "未命名"
     }
 
+fun eventDisplayNameFor(event: ScheduleEvent, weekday: Weekday): String {
+    val name = event.courseNameByWeekday[weekday] ?: event.courseName
+    return name ?: when (event.type) {
+        ScheduleEventType.BREAK -> "课间休息"
+        ScheduleEventType.ACTIVITY -> "活动"
+        ScheduleEventType.CLASS -> "未命名"
+    }
+}
+
+fun eventColorFor(event: ScheduleEvent, weekday: Weekday): Color {
+    val hex = event.courseColorByWeekday[weekday] ?: event.courseColor
+    return hex?.let { parseColor(it) } ?: Color.Unspecified
+}
+
 fun parseColor(hex: String): Color = runCatching {
     Color(hex.toColorInt())
 }.getOrElse { Color.DarkGray }
@@ -444,18 +458,34 @@ fun ScheduleEventCard(
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
     event: ScheduleEvent,
+    weekday: Weekday? = null,
     highlighted: Boolean = false,
     showWeekdayBadge: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {}
 ) {
-    val dotColor = event.courseColor?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
+    val name = if (weekday != null) {
+        event.courseNameByWeekday[weekday] ?: event.courseName
+    } else {
+        event.courseName
+    }
+    val colorHex = if (weekday != null) {
+        event.courseColorByWeekday[weekday] ?: event.courseColor
+    } else {
+        event.courseColor
+    }
+    val dotColor = colorHex?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
+    val displayName = name ?: when (event.type) {
+        ScheduleEventType.BREAK -> "课间休息"
+        ScheduleEventType.ACTIVITY -> "活动"
+        ScheduleEventType.CLASS -> "未命名"
+    }
 
     FilledTonalButton(
         onClick = onClick,
         onLongClick = onLongClick,
         transformation = transformation,
-        label = { Text(eventDisplayName(event)) },
+        label = { Text(displayName) },
         secondaryLabel = {
             val time = "${event.startTime} - ${event.endTime}"
             val suffix = if (showWeekdayBadge) "  ${weekdayScopeLabel(event.weekdays)}" else ""
