@@ -11,9 +11,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.wear.compose.material3.*
@@ -188,6 +194,7 @@ fun effectiveEventOnDate(event: ScheduleEvent, date: String): ScheduleEvent? {
 
     val weekday = dateStringToWeekday(date) ?: return null
     if (weekday !in event.weekdays) return null
+
     return event
 }
 
@@ -196,7 +203,9 @@ fun eventsOnDate(
     adjustments: List<ScheduleAdjustment>,
     date: String
 ): List<ScheduleEvent> {
-    val effectiveWeekday = effectiveWeekdayOnDate(date, adjustments) ?: return emptyList()
+    val effectiveWeekday = effectiveWeekdayOnDate(date, adjustments)
+        ?: return emptyList()
+
     val result = mutableListOf<ScheduleEvent>()
 
     for (event in events) {
@@ -204,6 +213,7 @@ fun eventsOnDate(
         if (event.transfers.any { it.fromDate == date }) continue
 
         val incoming = event.transfers.firstOrNull { it.toDate == date }
+
         if (incoming != null) {
             result.add(
                 event.copy(
@@ -219,7 +229,9 @@ fun eventsOnDate(
         }
     }
 
-    return result.sortedBy { toMinutes(it.startTime) ?: Int.MAX_VALUE }
+    return result.sortedBy {
+        toMinutes(it.startTime) ?: Int.MAX_VALUE
+    }
 }
 
 fun eventsForWeekday(
@@ -228,13 +240,16 @@ fun eventsForWeekday(
     weekday: Weekday,
     date: String
 ): List<ScheduleEvent> {
-    val effectiveWeekday = effectiveWeekdayOnDate(date, adjustments) ?: return emptyList()
+    val effectiveWeekday = effectiveWeekdayOnDate(date, adjustments)
+        ?: return emptyList()
+
     val result = mutableListOf<ScheduleEvent>()
 
     for (event in events) {
         if (!event.enabled) continue
 
         val incoming = event.transfers.firstOrNull { it.toDate == date }
+
         if (incoming != null) {
             result.add(
                 event.copy(
@@ -252,7 +267,9 @@ fun eventsForWeekday(
         }
     }
 
-    return result.sortedBy { toMinutes(it.startTime) ?: Int.MAX_VALUE }
+    return result.sortedBy {
+        toMinutes(it.startTime) ?: Int.MAX_VALUE
+    }
 }
 
 fun upcomingEventsForDate(
@@ -263,8 +280,12 @@ fun upcomingEventsForDate(
 ): List<ScheduleEvent> {
     return eventsOnDate(events, adjustments, date)
         .filter { it.type != ScheduleEventType.BREAK }
-        .filter { (toMinutes(it.startTime) ?: Int.MAX_VALUE) > nowMinutes }
-        .sortedBy { toMinutes(it.startTime) ?: Int.MAX_VALUE }
+        .filter {
+            (toMinutes(it.startTime) ?: Int.MAX_VALUE) > nowMinutes
+        }
+        .sortedBy {
+            toMinutes(it.startTime) ?: Int.MAX_VALUE
+        }
 }
 
 fun findCurrentEventOnDate(
@@ -292,69 +313,27 @@ const val PREP_BELL_SECONDS = 180
 const val FINAL_SPRINT_SECONDS = 180
 const val URGENT_FINAL_SECONDS = 600
 
-val funnyMessagesFar = listOf(
-    "稳如老狗" to "(￣▽￣)",
-    "时间还早，摸会儿鱼" to "( ˘ω˘ )",
-    "一切尽在掌握" to "(๑•̀ㅂ•́)و"
-)
-
-val funnyMessagesMid = listOf(
-    "撑住，过半了" to "(ง •_•)ง",
-    "还有一阵，别慌" to "(´･ω･`)",
-    "保持节奏" to "( •̀ ω •́ )"
-)
-
-val funnyMessagesNear = listOf(
-    "快下课了，加把劲" to "٩(๑•̀ω•́๑)۶",
-    "胜利就在前方" to "(๑•̀ㅂ•́)و✧",
-    "再坚持一会儿" to "(｡•̀ᴗ-)✧"
-)
-
-val funnyMessagesFinal = listOf(
-    "最后冲刺！" to "ヽ(•̀ω•́ )ゝ",
-    "马上结束！" to "(ﾉ>ω<)ﾉ",
-    "冲鸭！" to "ヾ(≧▽≦*)o"
-)
-
-val funnyMessagesPrep = listOf(
-    "预备铃响啦，准备上课" to "🔔(•̀ᴗ•́)و",
-    "要上课了，收收心" to "(๑•́ ₃ •̀๑)",
-    "预备！" to "⏰(ง •̀_•́)ง"
-)
-
-val funnyMessagesBreak = listOf(
-    "课间休息，活动一下" to "☕(´▽`)",
-    "喝口水，放松放松" to "🥤( ˘ω˘ )",
-    "下课啦，随便逛逛" to "🐾(￣▽￣)"
-)
-
-val funnyMessagesIdle = listOf(
-    "摸鱼时间到" to "🐟(￣▽￣)",
-    "自由活动，随便浪" to "( ˘ω˘ )",
-    "闲着也是闲着" to "(´･ω･`)"
-)
-
-fun funnyPool(tier: String): List<Pair<String, String>> = when (tier) {
-    "prep" -> funnyMessagesPrep
-    "break" -> funnyMessagesBreak
-    "idle" -> funnyMessagesIdle
-    "final" -> funnyMessagesFinal
-    "near" -> funnyMessagesNear
-    "mid" -> funnyMessagesMid
-    else -> funnyMessagesFar
-}
-
 private val WORKDAYS_FOR_LABEL = setOf(
-    Weekday.MONDAY, Weekday.TUESDAY, Weekday.WEDNESDAY, Weekday.THURSDAY, Weekday.FRIDAY
+    Weekday.MONDAY,
+    Weekday.TUESDAY,
+    Weekday.WEDNESDAY,
+    Weekday.THURSDAY,
+    Weekday.FRIDAY
 )
-private val WEEKEND_FOR_LABEL = setOf(Weekday.SATURDAY, Weekday.SUNDAY)
+
+private val WEEKEND_FOR_LABEL = setOf(
+    Weekday.SATURDAY,
+    Weekday.SUNDAY
+)
 
 fun weekdayScopeLabel(days: Set<Weekday>): String = when {
     days.isEmpty() -> "未设置"
     days == WORKDAYS_FOR_LABEL -> "工作日"
     days == WEEKEND_FOR_LABEL -> "周末"
     days.size == 7 -> "每天"
-    else -> days.sortedBy { it.ordinal }.joinToString("") { weekdayShortLabel(it) }
+    else -> days
+        .sortedBy { it.ordinal }
+        .joinToString("") { weekdayShortLabel(it) }
 }
 
 @Composable
@@ -377,22 +356,35 @@ fun CustomPresetDialog(
             AlertDialogDefaults.ConfirmButton(
                 onClick = {
                     if (customName.isNotBlank()) {
-                        onConfirm(customName.trim(), customColor)
+                        onConfirm(
+                            customName.trim(),
+                            customColor
+                        )
                     }
                 }
             )
         },
         dismissButton = {
-            AlertDialogDefaults.DismissButton(onClick = onDismiss)
+            AlertDialogDefaults.DismissButton(
+                onClick = onDismiss
+            )
         }
     ) {
         item {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(text = "名称")
-                Spacer(Modifier.height(4.dp))
+
+                Spacer(
+                    modifier = Modifier.height(4.dp)
+                )
+
                 BasicTextField(
                     value = customName,
-                    onValueChange = { customName = it },
+                    onValueChange = {
+                        customName = it
+                    },
                     singleLine = true,
                     textStyle = TextStyle(
                         color = MaterialTheme.colorScheme.onSurface
@@ -402,7 +394,10 @@ fun CustomPresetDialog(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(
+                            horizontal = 12.dp,
+                            vertical = 8.dp
+                        ),
                     decorationBox = { innerTextField ->
                         Box(
                             modifier = Modifier.fillMaxWidth(),
@@ -411,9 +406,12 @@ fun CustomPresetDialog(
                             if (customName.isEmpty()) {
                                 Text(
                                     text = placeholder,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme
+                                        .colorScheme
+                                        .onSurfaceVariant
                                 )
                             }
+
                             innerTextField()
                         }
                     }
@@ -422,9 +420,15 @@ fun CustomPresetDialog(
         }
 
         item {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(text = "颜色")
-                Spacer(Modifier.height(4.dp))
+
+                Spacer(
+                    modifier = Modifier.height(4.dp)
+                )
+
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -432,19 +436,28 @@ fun CustomPresetDialog(
                 ) {
                     paletteColors.forEach { hex ->
                         val selected = customColor == hex
+
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(
+                                    RoundedCornerShape(14.dp)
+                                )
                                 .background(parseColor(hex))
                                 .clickable {
-                                    customColor = if (selected) null else hex
+                                    customColor =
+                                        if (selected) {
+                                            null
+                                        } else {
+                                            hex
+                                        }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
                             if (selected) {
                                 Icon(
-                                    imageVector = MaterialSymbols.Rounded.Check,
+                                    imageVector =
+                                        MaterialSymbols.Rounded.Check,
                                     contentDescription = null,
                                     tint = contrastColorFor(hex),
                                     modifier = Modifier.size(18.dp)
@@ -470,16 +483,23 @@ fun ScheduleEventCard(
     onLongClick: () -> Unit = {}
 ) {
     val name = if (weekday != null) {
-        event.courseNameByWeekday[weekday] ?: event.courseName
+        event.courseNameByWeekday[weekday]
+            ?: event.courseName
     } else {
         event.courseName
     }
+
     val colorHex = if (weekday != null) {
-        event.courseColorByWeekday[weekday] ?: event.courseColor
+        event.courseColorByWeekday[weekday]
+            ?: event.courseColor
     } else {
         event.courseColor
     }
-    val dotColor = colorHex?.let { parseColor(it) } ?: MaterialTheme.colorScheme.onSurface
+
+    val dotColor = colorHex?.let {
+        parseColor(it)
+    } ?: MaterialTheme.colorScheme.onSurface
+
     val displayName = name ?: when (event.type) {
         ScheduleEventType.BREAK -> "课间休息"
         ScheduleEventType.ACTIVITY -> "活动"
@@ -490,30 +510,223 @@ fun ScheduleEventCard(
         onClick = onClick,
         onLongClick = onLongClick,
         transformation = transformation,
-        label = { Text(displayName) },
+        label = {
+            Text(displayName)
+        },
         secondaryLabel = {
-            val time = "${event.startTime} - ${event.endTime}"
-            val suffix = if (showWeekdayBadge) "  ${weekdayScopeLabel(event.weekdays)}" else ""
+            val time =
+                "${event.startTime} - ${event.endTime}"
+
+            val suffix =
+                if (showWeekdayBadge) {
+                    "  ${weekdayScopeLabel(event.weekdays)}"
+                } else {
+                    ""
+                }
+
             Text("$time$suffix")
         },
         icon = {
             Box(
                 Modifier
                     .size(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(
+                        RoundedCornerShape(6.dp)
+                    )
                     .background(dotColor)
             )
         },
         modifier = modifier
             .fillMaxWidth()
             .then(
-                if (highlighted) Modifier.border(
-                    2.dp,
-                    MaterialTheme.colorScheme.primaryContainer,
-                    RoundedCornerShape(50.dp)
-                ) else Modifier
+                if (highlighted) {
+                    Modifier.border(
+                        2.dp,
+                        MaterialTheme
+                            .colorScheme
+                            .primaryContainer,
+                        RoundedCornerShape(50.dp)
+                    )
+                } else {
+                    Modifier
+                }
             )
     )
+}
+
+@Composable
+fun ProgressFillCard(
+    modifier: Modifier = Modifier,
+    transformation: SurfaceTransformation? = null,
+    title: String,
+    timeRange: String,
+    progress: Float,
+    progressLabel: String? = null,
+    dotColor: Color = MaterialTheme.colorScheme.primary,
+    progressColor: Color = MaterialTheme.colorScheme.primary,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    onClick: () -> Unit = {}
+) {
+    val safeProgress = progress.coerceIn(0f, 1f)
+
+    val progressContentColor =
+        contrastColorForColor(progressColor)
+
+    Card(
+        onClick = onClick,
+        transformation = transformation,
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .background(trackColor)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(safeProgress)
+                    .background(progressColor)
+            )
+
+            ProgressFillCardContent(
+                title = title,
+                timeRange = timeRange,
+                progressLabel = progressLabel,
+                dotColor = dotColor,
+                textColor = contentColor,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (safeProgress > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = 0.dp,
+                                topEnd = 0.dp,
+                                bottomStart = 0.dp,
+                                bottomEnd = 0.dp
+                            )
+                        )
+                        .drawWithContent {
+                            val progressX =
+                                size.width * safeProgress
+
+                            drawContext.canvas.save()
+
+                            drawContext.canvas.clipRect(
+                                0f,
+                                0f,
+                                progressX,
+                                size.height
+                            )
+
+                            drawContent()
+
+                            drawContext.canvas.restore()
+                        }
+                ) {
+                    ProgressFillCardContent(
+                        title = title,
+                        timeRange = timeRange,
+                        progressLabel = progressLabel,
+                        dotColor = Color.Transparent,
+                        textColor = progressContentColor,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgressFillCardContent(
+    title: String,
+    timeRange: String,
+    progressLabel: String?,
+    dotColor: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = Modifier.padding(
+            horizontal = 14.dp,
+            vertical = 10.dp
+        )
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = timeRange,
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor.copy(alpha = 0.8f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        if (progressLabel != null) {
+            Spacer(Modifier.width(8.dp))
+
+            Text(
+                text = progressLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = textColor,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+private fun Modifier.progressTextClip(
+    progress: Float
+): Modifier {
+    return drawWithContent {
+        if (size.width <= 0f || progress <= 0f) {
+            return@drawWithContent
+        }
+
+        val progressX = size.width * progress
+
+        drawContext.canvas.save()
+
+        drawContext.canvas.clipRect(
+            0f,
+            0f,
+            progressX,
+            size.height
+        )
+
+        drawContent()
+
+        drawContext.canvas.restore()
+    }
+}
+
+private fun contrastColorForColor(
+    color: Color
+): Color {
+    val luminance =
+        0.299f * color.red +
+            0.587f * color.green +
+            0.114f * color.blue
+
+    return if (luminance > 0.6f) {
+        Color.Black
+    } else {
+        Color.White
+    }
 }
 
 @Composable
@@ -523,14 +736,27 @@ fun WearTimePicker(
     onCancel: () -> Unit
 ) {
     val parts = initial.split(":")
-    val hour = parts.getOrNull(0)?.toIntOrNull() ?: 8
-    val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
 
-    BackHandler { onCancel() }
+    val hour =
+        parts.getOrNull(0)?.toIntOrNull() ?: 8
+
+    val minute =
+        parts.getOrNull(1)?.toIntOrNull() ?: 0
+
+    BackHandler {
+        onCancel()
+    }
 
     TimePicker(
         initialTime = LocalTime.of(hour, minute),
-        onTimePicked = { time -> onConfirm("%02d:%02d".format(time.hour, time.minute)) },
+        onTimePicked = { time ->
+            onConfirm(
+                "%02d:%02d".format(
+                    time.hour,
+                    time.minute
+                )
+            )
+        },
         timePickerType = TimePickerType.HoursMinutes24H
     )
 }
@@ -541,14 +767,21 @@ fun WearDatePicker(
     onConfirm: (String) -> Unit,
     onCancel: () -> Unit
 ) {
-    val initialDate = runCatching { LocalDate.parse(initial) }
-        .getOrElse { LocalDate.now() }
+    val initialDate = runCatching {
+        LocalDate.parse(initial)
+    }.getOrElse {
+        LocalDate.now()
+    }
 
-    BackHandler { onCancel() }
+    BackHandler {
+        onCancel()
+    }
 
     DatePicker(
         initialDate = initialDate,
-        onDatePicked = { date -> onConfirm(date.toString()) },
+        onDatePicked = { date ->
+            onConfirm(date.toString())
+        },
         datePickerType = DatePickerType.YearMonthDay
     )
 }

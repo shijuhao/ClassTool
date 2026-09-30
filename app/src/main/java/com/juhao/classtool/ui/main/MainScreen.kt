@@ -7,16 +7,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -128,27 +125,6 @@ fun GreetingScreen(
     )
 
     val square = LocalScreenShape.current == ScreenShape.SQUARE
-    val displaySize = if (square) 28f else 32f
-    val titleSize = if (square) 18f else 20f
-    val mediumSize = 16f * (1f + 1.5f * finalPartProgress)
-
-    val isActivity = activeDisplayEvent?.type == ScheduleEventType.ACTIVITY
-    val showFunny = activeDisplayEvent != null && !isActivity
-    val isBreak = activeDisplayEvent?.type == ScheduleEventType.BREAK
-
-    val funnyTier = when {
-        isPrep -> "prep"
-        isBreak -> "break"
-        activeDisplayEvent == null -> "idle"
-        remainingSec == null -> "idle"
-        remainingSec <= FINAL_SPRINT_SECONDS -> "final"
-        targetProgress >= 0.75f -> "near"
-        targetProgress >= 0.5f -> "mid"
-        else -> "far"
-    }
-    val funnyPair = remember(funnyTier, activeDisplayEvent?.id) {
-        funnyPool(funnyTier).random()
-    }
 
     val nextEvent: ScheduleEvent? =
         remember(schedule, adjustments, todayDate, nowMinutes, activeDisplayEvent?.id) {
@@ -171,154 +147,71 @@ fun GreetingScreen(
             state = scrollState,
             contentPadding = contentPadding
         ) {
+            item {
+                ListHeader(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                        .minimumVerticalContentPadding(
+                            ListHeaderDefaults.minimumTopListContentPadding
+                        ),
+                    transformation = SurfaceTransformation(transformationSpec)
+                ) { Text(text = "ClassTool") }
+            }
+
             if (activeDisplayEvent != null) {
                 item {
-                    ListHeader(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .minimumVerticalContentPadding(
-                                ListHeaderDefaults.minimumTopListContentPadding
-                            ),
-                        transformation = SurfaceTransformation(transformationSpec)
-                    ) {
-                        Text(
-                            text = eventDisplayNameFor(activeDisplayEvent, displayWeekday),
-                            style = TextStyle(
-                                fontSize = displaySize.sp,
-                                lineHeight = (displaySize * 1.2f).sp,
-                                fontWeight = FontWeight.Normal
-                            ),
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .basicMarquee(
-                                    iterations = Int.MAX_VALUE,
-                                    repeatDelayMillis = 1000,
-                                    velocity = 30.dp
-                                )
-                        )
-                    }
-                }
-
-                item {
-                    Text(
-                        text = if (isPrep) "即将开始"
-                        else "${activeDisplayEvent.startTime} - ${activeDisplayEvent.endTime}",
-                        style = TextStyle(
-                            fontSize = titleSize.sp,
-                            lineHeight = (titleSize * 1.2f).sp
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            },
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                item {
-                    LinearProgressIndicator(
-                        progress = { progressAnim.value },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            },
-                        colors = ProgressIndicatorDefaults.colors(
-                            trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            indicatorColor = MaterialTheme.colorScheme.primary,
-                        )
-                    )
-                }
-
-                if (remainingSec != null) {
-                    item {
-                        val remainingText = if (remainingSec > 0) {
+                    val remainingText = if (remainingSec != null) {
+                        if (remainingSec > 0) {
                             if (isFinalPart) {
                                 "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
                             } else {
                                 "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
                             }
                         } else "00:00"
-                        Text(
-                            text = remainingText,
-                            style = TextStyle(
-                                fontSize = mediumSize.sp,
-                                lineHeight = (mediumSize * 1.2f).sp
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .transformedHeight(this, transformationSpec)
-                                .graphicsLayer {
-                                    with(transformationSpec) {
-                                        applyContainerTransformation(scrollProgress)
-                                    }
-                                },
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    } else null
 
-                    if (showFunny) {
-                        item {
-                            AnimatedContent(
-                                targetState = funnyPair,
-                                transitionSpec = {
-                                    fadeIn(tween(400)) togetherWith fadeOut(tween(400))
-                                },
-                                label = "funny",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .transformedHeight(this, transformationSpec)
-                                    .graphicsLayer {
-                                        with(transformationSpec) {
-                                            applyContainerTransformation(scrollProgress)
-                                        }
-                                    }
-                            ) { pair ->
-                                Text(
-                                    text = "${pair.first} ${pair.second}",
-                                    style = TextStyle(
-                                        fontSize = 13.sp,
-                                        lineHeight = (13f * 1.2f).sp
-                                    ),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            } else {
-                item {
-                    ListHeader(
+                    ProgressFillCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec)
-                            .minimumVerticalContentPadding(
-                                ListHeaderDefaults.minimumTopListContentPadding
-                            ),
-                        transformation = SurfaceTransformation(transformationSpec)
-                    ) { Text(text = "ClassTool") }
+                            .graphicsLayer {
+                                with(transformationSpec) {
+                                    applyContainerTransformation(scrollProgress)
+                                }
+                            },
+                        transformation = SurfaceTransformation(transformationSpec),
+                        title = eventDisplayNameFor(activeDisplayEvent, displayWeekday),
+                        timeRange = if (isPrep) "即将开始" else "${activeDisplayEvent.startTime} - ${activeDisplayEvent.endTime}",
+                        progress = progressAnim.value,
+                        progressLabel = remainingText,
+                        dotColor = eventColorFor(activeDisplayEvent, displayWeekday).takeIf { it != androidx.compose.ui.graphics.Color.Unspecified }
+                            ?: MaterialTheme.colorScheme.primary,
+                        progressColor = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 }
+            } else {
                 item {
+                    val idleRemainingText = remember(nowSecondOfDay) {
+                        val next = upcomingEventsForDate(schedule, adjustments, todayDate, nowMinutes)
+                            .firstOrNull()
+                        if (next != null) {
+                            val s = toMinutes(next.startTime)?.times(60)
+                            if (s != null) {
+                                val diff = (s - nowSecondOfDay).coerceAtLeast(0)
+                                "距离下一事件 %02d:%02d".format(diff / 60, diff % 60)
+                            } else "暂无事件"
+                        } else "今日无更多事件"
+                    }
+
                     AnimatedContent(
-                        targetState = funnyPair,
+                        targetState = idleRemainingText,
                         transitionSpec = {
                             fadeIn(tween(400)) togetherWith fadeOut(tween(400))
                         },
-                        label = "funny",
+                        label = "idle",
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec)
@@ -327,9 +220,9 @@ fun GreetingScreen(
                                     applyContainerTransformation(scrollProgress)
                                 }
                             }
-                    ) { pair ->
+                    ) { text ->
                         Text(
-                            text = "${pair.first} ${pair.second}",
+                            text = text,
                             style = TextStyle(
                                 fontSize = 13.sp,
                                 lineHeight = (13f * 1.2f).sp
@@ -361,23 +254,7 @@ fun GreetingScreen(
                 }
 
                 item {
-                    ScheduleEventCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec),
-                        transformation = SurfaceTransformation(transformationSpec),
-                        event = nextEvent,
-                        weekday = displayWeekday
-                    )
-                }
-
-                item {
-                    Text(
-                        text = if (nextEventMinutes != null && nextEventMinutes > 0) {
-                            "还有 $nextEventMinutes 分钟开始"
-                        } else "即将开始",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
+                    ProgressFillCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec)
@@ -386,7 +263,19 @@ fun GreetingScreen(
                                     applyContainerTransformation(scrollProgress)
                                 }
                             },
-                        textAlign = TextAlign.Center
+                        transformation = SurfaceTransformation(transformationSpec),
+                        title = eventDisplayNameFor(nextEvent, displayWeekday),
+                        timeRange = "${nextEvent.startTime} - ${nextEvent.endTime}",
+                        progress = 0f,
+                        progressLabel = if (nextEventMinutes != null && nextEventMinutes > 0) {
+                            "$nextEventMinutes 分钟后开始"
+                        } else "即将开始",
+                        dotColor = eventColorFor(nextEvent, displayWeekday).takeIf { it != androidx.compose.ui.graphics.Color.Unspecified }
+                            ?: MaterialTheme.colorScheme.primary,
+                        progressColor = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        onClick = { onChangePage(TimeTableNavScreen) }
                     )
                 }
             }
