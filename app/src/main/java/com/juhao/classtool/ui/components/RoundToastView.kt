@@ -25,6 +25,8 @@ class RoundToastView @JvmOverloads constructor(
 
     private var toastText: String = ""
 
+    var isSquare: Boolean = false
+
     private val toastColor = 0xCC1A1A1A.toInt()
     private val borderColor = 0x33FFFFFF
     private val textColor = 0xFFFFFFFF.toInt()
@@ -81,7 +83,6 @@ class RoundToastView @JvmOverloads constructor(
 
         val cx = w / 2f
         val cy = h / 2f
-        arcRect.set(cx - arcRadius, cy - arcRadius, cx + arcRadius, cy + arcRadius)
 
         val textWidth = textPaint.measureText(toastText)
         val perimeter = 2 * PI * arcRadius
@@ -90,9 +91,19 @@ class RoundToastView @JvmOverloads constructor(
             .toFloat()
             .coerceIn(minSweepAngle, maxSweepAngle)
 
-        val signedSweep = -sweep
-        val startAngle = 90f - signedSweep / 2f
-        path.addArc(arcRect, startAngle, signedSweep)
+        if (isSquare) {
+            val lineLength = (targetArcLength)
+                .coerceAtMost(w - textPadding * 2)
+            val half = lineLength / 2f
+            val y = cy + arcRadius
+            path.moveTo(cx - half, y)
+            path.lineTo(cx + half, y)
+        } else {
+            arcRect.set(cx - arcRadius, cy - arcRadius, cx + arcRadius, cy + arcRadius)
+            val signedSweep = -sweep
+            val startAngle = 90f - signedSweep / 2f
+            path.addArc(arcRect, startAngle, signedSweep)
+        }
     }
 
     override fun onDraw(canvas: Canvas) {

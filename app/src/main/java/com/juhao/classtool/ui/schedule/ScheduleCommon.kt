@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -472,100 +473,17 @@ fun CustomPresetDialog(
 }
 
 @Composable
-fun ScheduleEventCard(
-    modifier: Modifier = Modifier,
-    transformation: SurfaceTransformation? = null,
-    event: ScheduleEvent,
-    weekday: Weekday? = null,
-    highlighted: Boolean = false,
-    showWeekdayBadge: Boolean = false,
-    onClick: () -> Unit = {},
-    onLongClick: () -> Unit = {}
-) {
-    val name = if (weekday != null) {
-        event.courseNameByWeekday[weekday]
-            ?: event.courseName
-    } else {
-        event.courseName
-    }
-
-    val colorHex = if (weekday != null) {
-        event.courseColorByWeekday[weekday]
-            ?: event.courseColor
-    } else {
-        event.courseColor
-    }
-
-    val dotColor = colorHex?.let {
-        parseColor(it)
-    } ?: MaterialTheme.colorScheme.onSurface
-
-    val displayName = name ?: when (event.type) {
-        ScheduleEventType.BREAK -> "课间休息"
-        ScheduleEventType.ACTIVITY -> "活动"
-        ScheduleEventType.CLASS -> "未命名"
-    }
-
-    FilledTonalButton(
-        onClick = onClick,
-        onLongClick = onLongClick,
-        transformation = transformation,
-        label = {
-            Text(displayName)
-        },
-        secondaryLabel = {
-            val time =
-                "${event.startTime} - ${event.endTime}"
-
-            val suffix =
-                if (showWeekdayBadge) {
-                    "  ${weekdayScopeLabel(event.weekdays)}"
-                } else {
-                    ""
-                }
-
-            Text("$time$suffix")
-        },
-        icon = {
-            Box(
-                Modifier
-                    .size(12.dp)
-                    .clip(
-                        RoundedCornerShape(6.dp)
-                    )
-                    .background(dotColor)
-            )
-        },
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (highlighted) {
-                    Modifier.border(
-                        2.dp,
-                        MaterialTheme
-                            .colorScheme
-                            .primaryContainer,
-                        RoundedCornerShape(50.dp)
-                    )
-                } else {
-                    Modifier
-                }
-            )
-    )
-}
-
-@Composable
 fun ProgressFillCard(
     modifier: Modifier = Modifier,
     transformation: SurfaceTransformation? = null,
     title: String,
     timeRange: String,
-    progress: Float,
+    progress: Float = 0f,
     progressLabel: String? = null,
-    dotColor: Color = MaterialTheme.colorScheme.primary,
     progressColor: Color = MaterialTheme.colorScheme.primary,
     trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    isEnded: Boolean = false,
     onClick: () -> Unit = {}
 ) {
     val safeProgress = progress.coerceIn(0f, 1f)
@@ -576,7 +494,9 @@ fun ProgressFillCard(
     Card(
         onClick = onClick,
         transformation = transformation,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .alpha(if (isEnded) 0.6f else 1f),
         contentPadding = PaddingValues(0.dp)
     ) {
         Box(
@@ -595,8 +515,8 @@ fun ProgressFillCard(
             ProgressFillCardContent(
                 title = title,
                 timeRange = timeRange,
+                pointColor = progressColor,
                 progressLabel = progressLabel,
-                dotColor = dotColor,
                 textColor = contentColor,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -635,7 +555,7 @@ fun ProgressFillCard(
                         title = title,
                         timeRange = timeRange,
                         progressLabel = progressLabel,
-                        dotColor = Color.Transparent,
+                        pointColor = progressColor,
                         textColor = progressContentColor,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -650,42 +570,53 @@ private fun ProgressFillCardContent(
     title: String,
     timeRange: String,
     progressLabel: String?,
-    dotColor: Color,
     textColor: Color,
+    pointColor: Color,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Row(
         modifier = Modifier.padding(
             horizontal = 14.dp,
             vertical = 10.dp
         )
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            color = textColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Text(
-            text = timeRange,
-            style = MaterialTheme.typography.labelSmall,
-            color = textColor.copy(alpha = 0.8f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        if (progressLabel != null) {
-            Spacer(Modifier.width(8.dp))
-
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
             Text(
-                text = progressLabel,
-                style = MaterialTheme.typography.labelMedium,
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
                 color = textColor,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+    
+            Text(
+                text = timeRange,
+                style = MaterialTheme.typography.labelSmall,
+                color = textColor.copy(alpha = 0.8f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+    
+            if (progressLabel != null) {
+                Spacer(Modifier.width(8.dp))
+    
+                Text(
+                    text = progressLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = textColor,
+                    maxLines = 1
+                )
+            }
         }
+        
+        Box(
+            Modifier
+                .size(12.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(pointColor)
+        )
     }
 }
 

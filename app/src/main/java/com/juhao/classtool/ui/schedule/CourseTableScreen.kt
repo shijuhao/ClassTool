@@ -129,7 +129,6 @@ fun CourseTableScreen(modifier: Modifier = Modifier) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier
-                                    .fillMaxWidth()
                                     .transformedHeight(this, transformationSpec)
                                     .graphicsLayer {
                                         with(transformationSpec) {

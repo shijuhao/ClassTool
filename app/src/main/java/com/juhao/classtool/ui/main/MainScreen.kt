@@ -1,15 +1,10 @@
 package com.juhao.classtool.ui.main
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -18,6 +13,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.foundation.pager.HorizontalPager
+import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
@@ -28,6 +25,7 @@ import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.SettingsDataStore
+import com.juhao.classtool.datastore.Weekday
 import com.juhao.classtool.navigation.*
 import com.juhao.classtool.ui.schedule.*
 import com.juhao.classtool.utils.*
@@ -103,14 +101,6 @@ fun GreetingScreen(
             .coerceIn(0f, 1f)
     } else 0f
 
-    val progressAnim = remember { Animatable(0f) }
-    LaunchedEffect(activeDisplayEvent?.id, isPrep) {
-        if (activeDisplayEvent == null) progressAnim.snapTo(0f)
-    }
-    LaunchedEffect(targetProgress) {
-        if (activeDisplayEvent != null) progressAnim.snapTo(targetProgress)
-    }
-
     val remainingSec = if (isPrep) {
         startSec?.minus(nowSecondOfDay)?.takeIf { it > 0 }
     } else {
@@ -118,28 +108,259 @@ fun GreetingScreen(
     }
 
     val isFinalPart = remainingSec != null && remainingSec in 1..FINAL_SPRINT_SECONDS
-    val finalPartProgress by animateFloatAsState(
-        targetValue = if (isFinalPart) 1f else 0f,
-        animationSpec = tween(400),
-        label = "finalPart"
-    )
 
-    val square = LocalScreenShape.current == ScreenShape.SQUARE
-
-    val nextEvent: ScheduleEvent? =
-        remember(schedule, adjustments, todayDate, nowMinutes, activeDisplayEvent?.id) {
-            val activeId = activeDisplayEvent?.id
-            upcomingEventsForDate(schedule, adjustments, todayDate, nowMinutes)
-                .firstOrNull { it.id != activeId }
-        }
-
-    val nextEventMinutes: Int? = nextEvent?.let { event ->
-        val s = toMinutes(event.startTime)?.times(60)
-        if (s == null) null
-        else ((s - nowSecondOfDay) / 60).coerceAtLeast(0)
+    val upcomingEvents: List<ScheduleEvent> = remember(
+        schedule, adjustments, todayDate, nowMinutes, activeDisplayEvent?.id
+    ) {
+        val activeId = activeDisplayEvent?.id
+        upcomingEventsForDate(schedule, adjustments, todayDate, nowMinutes)
+            .filter { it.id != activeId }
     }
 
+    val todayAllEvents: List<ScheduleEvent> = remember(schedule, adjustments, todayDate) {
+        eventsOnDate(schedule, adjustments, todayDate)
+            .filter { it.enabled && it.type != ScheduleEventType.BREAK }
+    }
+
+    val pastEvents: List<ScheduleEvent> = remember(
+        schedule, adjustments, todayDate, nowMinutes
+    ) {
+        eventsOnDate(schedule, adjustments, todayDate)
+            .filter { it.type != ScheduleEventType.BREAK }
+            .filter { (toMinutes(it.endTime) ?: Int.MAX_VALUE) <= nowMinutes }
+            .sortedBy { toMinutes(it.endTime) ?: Int.MAX_VALUE }
+    }
+
+    val summaryLabel: String = remember(todayAllEvents, pastEvents) {
+        when {
+            todayAllEvents.isEmpty() -> "今天没有事件，好好休息吧!"
+            pastEvents.size >= todayAllEvents.size -> "今日事件已全部完成"
+            else -> "${todayAllEvents.size}个事件 ${pastEvents.size}个已完成"
+        }
+    }
+
+    val pagerState = rememberPagerState(pageCount = { 2 })
+
+    HorizontalPagerScaffold(pagerState = pagerState) {
+        HorizontalPager(state = pagerState) { page ->
+            when (page) {
+                0 -> CurrentEventPage(
+                    activeDisplayEvent = activeDisplayEvent,
+                    isPrep = isPrep,
+                    progress = targetProgress,
+                    remainingSec = remainingSec,
+                    isFinalPart = isFinalPart,
+                    displayWeekday = displayWeekday,
+                    nowSecondOfDay = nowSecondOfDay,
+                    schedule = schedule,
+                    adjustments = adjustments,
+                    todayDate = todayDate,
+                    nowMinutes = nowMinutes,
+                    pastEvents = pastEvents,
+                    upcomingEvents = upcomingEvents,
+                    summaryLabel = summaryLabel
+                )
+                1 -> MenuPage(onChangePage = onChangePage)
+            }
+        }
+    }
+}
+
+@Composable
+private fun eventColorFor(event: ScheduleEvent, weekday: Weekday): Color {
+    val hex = event.courseColorByWeekday[weekday] ?: event.courseColor
+    return hex?.let { parseColor(it) } ?: MaterialTheme.colorScheme.primary
+}
+
+@Composable
+private fun CurrentEventPage(
+    activeDisplayEvent: ScheduleEvent?,
+    isPrep: Boolean,
+    progress: Float,
+    remainingSec: Int?,
+    isFinalPart: Boolean,
+    displayWeekday: Weekday,
+    nowSecondOfDay: Int,
+    schedule: List<ScheduleEvent>,
+    adjustments: List<ScheduleAdjustment>,
+    todayDate: String,
+    nowMinutes: Int,
+    pastEvents: List<ScheduleEvent>,
+    upcomingEvents: List<ScheduleEvent>,
+    summaryLabel: String
+) {
     val scrollState = rememberTransformingLazyColumnState()
+    val square = LocalScreenShape.current == ScreenShape.SQUARE
+    val transformationSpec = rememberAdaptiveTransformationSpec(square)
+
+    val activeEventIndex = if (activeDisplayEvent != null) 2 + pastEvents.size else null
+
+    LaunchedEffect(activeEventIndex) {
+        activeEventIndex?.let { index ->
+            scrollState.animateScrollToItem(index)
+        }
+    }
+
+    val dateLabel = remember(todayDate) {
+        runCatching {
+            val d = java.time.LocalDate.parse(todayDate)
+            val w = dateStringToWeekday(todayDate)
+            val weekdayText = w?.let { weekdayLabel(it) } ?: ""
+            "${d.year}年${d.monthValue}月${d.dayOfMonth}日 $weekdayText".trim()
+        }.getOrElse { todayDate }
+    }
+
+    ScreenScaffold(scrollState = scrollState) { contentPadding ->
+        TransformingLazyColumn(
+            state = scrollState,
+            contentPadding = contentPadding
+        ) {
+            item {
+                ListHeader(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                        .minimumVerticalContentPadding(
+                            ListHeaderDefaults.minimumTopListContentPadding,
+                            ListHeaderDefaults.minimumBottomListContentPadding,
+                        ),
+                    transformation = SurfaceTransformation(transformationSpec)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "今天")
+
+                        Text(
+                            text = dateLabel,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            item {
+                FilledTonalButton(
+                    onClick = { /* Do something */ },
+                    label = { Text("今日日程") },
+                    secondaryLabel = { Text(summaryLabel) },
+                    transformation = SurfaceTransformation(transformationSpec),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec)
+                )
+            }
+
+            if (pastEvents.isNotEmpty()) {
+                items(
+                    count = pastEvents.size,
+                    key = { pastEvents[it].id }
+                ) { index ->
+                    val event = pastEvents[index]
+                    val isLast = index == pastEvents.lastIndex
+                    ProgressFillCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec)
+                            .graphicsLayer {
+                                with(transformationSpec) {
+                                    applyContainerTransformation(scrollProgress)
+                                }
+                            }
+                            .then(
+                                if (isLast) {
+                                    Modifier.minimumVerticalContentPadding(
+                                        ButtonDefaults.minimumVerticalListContentPadding
+                                    )
+                                } else Modifier
+                            ),
+                        transformation = SurfaceTransformation(transformationSpec),
+                        title = eventDisplayNameFor(event, displayWeekday),
+                        timeRange = "${event.startTime} - ${event.endTime}",
+                        progressColor = eventColorFor(event, displayWeekday),
+                        progressLabel = "已结束",
+                        isEnded = true
+                    )
+                }
+            }
+
+            if (activeDisplayEvent != null) {
+                item {
+                    val remainingText = if (remainingSec != null) {
+                        if (remainingSec > 0) {
+                            "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
+                        } else "00:00"
+                    } else null
+
+                    ProgressFillCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec)
+                            .graphicsLayer {
+                                with(transformationSpec) {
+                                    applyContainerTransformation(scrollProgress)
+                                }
+                            },
+                        transformation = SurfaceTransformation(transformationSpec),
+                        title = eventDisplayNameFor(activeDisplayEvent, displayWeekday),
+                        timeRange = if (isPrep) "即将开始" else "${activeDisplayEvent.startTime} - ${activeDisplayEvent.endTime}",
+                        progress = progress,
+                        progressLabel = remainingText,
+                        progressColor = eventColorFor(activeDisplayEvent, displayWeekday),
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            if (upcomingEvents.isNotEmpty()) {
+                items(
+                    count = upcomingEvents.size,
+                    key = { upcomingEvents[it].id }
+                ) { index ->
+                    val event = upcomingEvents[index]
+                    val isLast = index == upcomingEvents.lastIndex
+                    val eventStartSec = toMinutes(event.startTime)?.times(60)
+                    val minutesUntil = eventStartSec?.let {
+                        ((it - nowSecondOfDay) / 60).coerceAtLeast(0)
+                    }
+
+                    ProgressFillCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec)
+                            .graphicsLayer {
+                                with(transformationSpec) {
+                                    applyContainerTransformation(scrollProgress)
+                                }
+                            }
+                            .then(
+                                if (isLast) {
+                                    Modifier.minimumVerticalContentPadding(
+                                        ButtonDefaults.minimumVerticalListContentPadding
+                                    )
+                                } else Modifier
+                            ),
+                        transformation = SurfaceTransformation(transformationSpec),
+                        title = eventDisplayNameFor(event, displayWeekday),
+                        timeRange = "${event.startTime} - ${event.endTime}",
+                        progressColor = eventColorFor(event, displayWeekday),
+                        progressLabel = if (minutesUntil != null && minutesUntil > 0) {
+                            "$minutesUntil 分钟后开始"
+                        } else "即将开始"
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MenuPage(onChangePage: (AppKey) -> Unit) {
+    val scrollState = rememberTransformingLazyColumnState()
+    val square = LocalScreenShape.current == ScreenShape.SQUARE
     val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
     ScreenScaffold(scrollState = scrollState) { contentPadding ->
@@ -156,128 +377,7 @@ fun GreetingScreen(
                             ListHeaderDefaults.minimumTopListContentPadding
                         ),
                     transformation = SurfaceTransformation(transformationSpec)
-                ) { Text(text = "ClassTool") }
-            }
-
-            if (activeDisplayEvent != null) {
-                item {
-                    val remainingText = if (remainingSec != null) {
-                        if (remainingSec > 0) {
-                            if (isFinalPart) {
-                                "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
-                            } else {
-                                "剩余 %02d:%02d".format(remainingSec / 60, remainingSec % 60)
-                            }
-                        } else "00:00"
-                    } else null
-
-                    ProgressFillCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            },
-                        transformation = SurfaceTransformation(transformationSpec),
-                        title = eventDisplayNameFor(activeDisplayEvent, displayWeekday),
-                        timeRange = if (isPrep) "即将开始" else "${activeDisplayEvent.startTime} - ${activeDisplayEvent.endTime}",
-                        progress = progressAnim.value,
-                        progressLabel = remainingText,
-                        dotColor = eventColorFor(activeDisplayEvent, displayWeekday).takeIf { it != androidx.compose.ui.graphics.Color.Unspecified }
-                            ?: MaterialTheme.colorScheme.primary,
-                        progressColor = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            } else {
-                item {
-                    val idleRemainingText = remember(nowSecondOfDay) {
-                        val next = upcomingEventsForDate(schedule, adjustments, todayDate, nowMinutes)
-                            .firstOrNull()
-                        if (next != null) {
-                            val s = toMinutes(next.startTime)?.times(60)
-                            if (s != null) {
-                                val diff = (s - nowSecondOfDay).coerceAtLeast(0)
-                                "距离下一事件 %02d:%02d".format(diff / 60, diff % 60)
-                            } else "暂无事件"
-                        } else "今日无更多事件"
-                    }
-
-                    AnimatedContent(
-                        targetState = idleRemainingText,
-                        transitionSpec = {
-                            fadeIn(tween(400)) togetherWith fadeOut(tween(400))
-                        },
-                        label = "idle",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            }
-                    ) { text ->
-                        Text(
-                            text = text,
-                            style = TextStyle(
-                                fontSize = 13.sp,
-                                lineHeight = (13f * 1.2f).sp
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            if (nextEvent != null) {
-                item {
-                    Text(
-                        text = "下一事件",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            },
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                item {
-                    ProgressFillCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            },
-                        transformation = SurfaceTransformation(transformationSpec),
-                        title = eventDisplayNameFor(nextEvent, displayWeekday),
-                        timeRange = "${nextEvent.startTime} - ${nextEvent.endTime}",
-                        progress = 0f,
-                        progressLabel = if (nextEventMinutes != null && nextEventMinutes > 0) {
-                            "$nextEventMinutes 分钟后开始"
-                        } else "即将开始",
-                        dotColor = eventColorFor(nextEvent, displayWeekday).takeIf { it != androidx.compose.ui.graphics.Color.Unspecified }
-                            ?: MaterialTheme.colorScheme.primary,
-                        progressColor = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        onClick = { onChangePage(TimeTableNavScreen) }
-                    )
-                }
+                ) { Text(text = "更多") }
             }
 
             item {

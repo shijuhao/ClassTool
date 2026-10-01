@@ -14,16 +14,15 @@ import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScreenShapeMode
 import com.juhao.classtool.datastore.SettingsDataStore
-import com.juhao.classtool.datastore.TestModeState
 import com.juhao.classtool.utils.*
+import com.juhao.classtool.navigation.*
 import kotlinx.coroutines.launch
 
 private val UI_SCALE_STEPS = (5..15 step 1).map { it / 10f }
 
 @Composable
 fun SettingsScreen(
-    onNavigateToBackup: () -> Unit = {},
-    onNavigateToAdjustment: () -> Unit = {}
+    onChangePage: (AppKey) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -65,12 +64,31 @@ fun SettingsScreen(
             
             item {
                 FilledTonalButton(
-                    onClick = onNavigateToAdjustment,
+                    onClick = { onChangePage(AdjustmentNavScreen) },
                     label = { Text("调休") },
                     secondaryLabel = { Text("互换两天的时间表") },
                     icon = {
                         Icon(
                             imageVector = MaterialSymbols.Rounded.Swap_horiz,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(ScheduleTableNavScreen) },
+                    label = { Text("日程表管理") },
+                    secondaryLabel = { Text("切换 / 新建多个日程表") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Calendar_month,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
@@ -306,42 +324,52 @@ fun SettingsScreen(
             }
 
             item {
-                SwitchButton(
-                    checked = testMode,
-                    onCheckedChange = { checked ->
-                        TestModeState.enabled = checked
-                        scope.launch {
-                            store.setTestMode(checked)
-                        }
-                    },
-                    label = {
-                        Text(
-                            text = "测试模式",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    secondaryLabel = {
-                        Text(
-                            text = "使用测试日程数据",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Developer_mode,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
+                if (testMode) {
+                    SplitSwitchButton(
+                        checked = true,
+                        onCheckedChange = { checked ->
+                            scope.launch {
+                                store.setTestMode(checked)
+                            }
+                        },
+                        label = { Text("测试模式") },
+                        secondaryLabel = { Text("已开启测试环境，点我进入测试页面") },
+                        onContainerClick = {
+                            onChangePage(DeveloperNavScreen)
+                        },
+                        toggleContentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec),
+                        transformation = SurfaceTransformation(transformationSpec)
+                    )
+                } else {
+                    SwitchButton(
+                        checked = false,
+                        onCheckedChange = { checked ->
+                            scope.launch {
+                                store.setTestMode(checked)
+                            }
+                        },
+                        label = { Text("测试模式") },
+                        secondaryLabel = { Text("开启测试选项") },
+                        icon = {
+                            Icon(
+                                imageVector = MaterialSymbols.Rounded.Developer_mode,
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec),
+                        transformation = SurfaceTransformation(transformationSpec)
+                    )
+                }
             }
 
             item {
                 FilledTonalButton(
-                    onClick = onNavigateToBackup,
+                    onClick = { onChangePage(BackupRestoreNavScreen) },
                     label = { Text("备份与还原") },
                     secondaryLabel = { Text("复制 / 解析 JSON") },
                     icon = {

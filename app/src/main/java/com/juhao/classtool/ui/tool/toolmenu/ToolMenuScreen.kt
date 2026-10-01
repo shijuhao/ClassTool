@@ -41,6 +41,23 @@ fun ToolMenu(
             }
             item {
                 FilledTonalButton(
+                    onClick = { onChangePage(ClockNavScreen) },
+                    label = { Text("时钟") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            item {
+                FilledTonalButton(
                     onClick = { onChangePage(TimerNavScreen) },
                     label = { Text("秒表") },
                     icon = {

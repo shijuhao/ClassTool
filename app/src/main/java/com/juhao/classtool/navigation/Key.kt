@@ -38,6 +38,8 @@ data object ToolMenuNavScreen : AppKey
 data object TimerNavScreen : AppKey
 @Serializable
 data object ToolCountdownNavScreen : AppKey
+@Serializable
+data object ClockNavScreen : AppKey
 
 @Serializable
 data object GameMenuNavScreen : AppKey
@@ -51,9 +53,12 @@ data object ReactionNavScreen : AppKey
 @Serializable
 data object SettingsNavScreen : AppKey
 @Serializable
-data object BackupRestoreNavScreen : AppKey
-@Serializable
-data object AboutNavScreen : AppKey
-
+data object DeveloperNavScreen : AppKey
 @Serializable
 data object AdjustmentNavScreen : AppKey
+@Serializable
+data object BackupRestoreNavScreen : AppKey
+@Serializable
+data object ScheduleTableNavScreen : AppKey
+@Serializable
+data object AboutNavScreen : AppKey

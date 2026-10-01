@@ -118,15 +118,6 @@ fun WearApp() {
         SettingsDataStore(context)
     }
 
-    var testModeLoaded by remember {
-        mutableStateOf(false)
-    }
-
-    LaunchedEffect(Unit) {
-        TestModeState.enabled = settingsDataStore.getTestMode()
-        testModeLoaded = true
-    }
-
     val screenShapeMode by settingsDataStore
         .screenShapeModeFlow
         .collectAsState(
@@ -139,6 +130,10 @@ fun WearApp() {
         ScreenShape.SQUARE
     } else {
         ScreenShape.ROUND
+    }
+    
+    LaunchedEffect(isSquare) {
+        RoundToast.squareMode = isSquare
     }
 
     val dynamicThemeEnabled by settingsDataStore
@@ -155,57 +150,55 @@ fun WearApp() {
         mutableStateOf(false)
     }
 
-    LaunchedEffect(
-        dynamicThemeEnabled,
-        testModeLoaded
-    ) {
-        if (!dynamicThemeEnabled || !testModeLoaded) {
+    LaunchedEffect(dynamicThemeEnabled) {
+        if (!dynamicThemeEnabled) {
             currentEventColor = null
             currentEventUrgent = false
             return@LaunchedEffect
         }
-
+    
         val scheduleStore = ScheduleDataStore(context)
-
-        scheduleStore.scheduleFlow.collectLatest { schedule ->
+    
+        scheduleStore.tablesFlow.collectLatest {
             while (true) {
+                val schedule = scheduleStore.getSchedule()
                 val events = schedule.events
                 val adjustments = schedule.adjustments
-
+    
                 val todayDate = todayDateString()
-
+    
                 val displayWeekday = effectiveWeekdayOnDate(
                     todayDate,
                     adjustments
                 ) ?: todayWeekday()
-
+    
                 val nowSec = currentSecondOfDay()
                 val nowMinutes = nowSec / 60
-
+    
                 val active = findCurrentEventOnDate(
                     events,
                     adjustments,
                     todayDate,
                     nowMinutes
                 )
-
+    
                 val activeColorHex = active?.let {
                     it.courseColorByWeekday[displayWeekday] ?: it.courseColor
                 }
-
+    
                 currentEventColor = activeColorHex?.let {
                     parseColor(it)
                 }
-
+    
                 val remaining = active?.let {
                     (toMinutes(it.endTime) ?: Int.MAX_VALUE) - nowMinutes
                 } ?: Int.MAX_VALUE
-
+    
                 currentEventUrgent =
                     active?.urgent == true && remaining in 0..10
-
+    
                 val nowSecLong = nowSec.toLong()
-
+    
                 val nextBoundary = eventsOnDate(
                     events,
                     adjustments,
@@ -216,11 +209,11 @@ fun WearApp() {
                         val start = toMinutes(effective.startTime)
                             ?.toLong()
                             ?.times(60L)
-
+    
                         val end = toMinutes(effective.endTime)
                             ?.toLong()
                             ?.times(60L)
-
+    
                         sequenceOf(
                             start,
                             end,
@@ -230,12 +223,12 @@ fun WearApp() {
                     .filterNotNull()
                     .filter { it > nowSecLong }
                     .minOrNull()
-
+    
                 val sleepSec = nextBoundary
                     ?.minus(nowSecLong)
                     ?.coerceAtLeast(1L)
                     ?: (86400L - nowSecLong).coerceAtLeast(60L)
-
+    
                 delay((sleepSec * 1000L).milliseconds)
             }
         }
@@ -253,123 +246,111 @@ fun WearApp() {
         false
     }
 
-    if (testModeLoaded) {
-        val scheduleStore = remember(TestModeState.enabled) {
-            ScheduleDataStore(context)
-        }
+    val scheduleStore = remember {
+        ScheduleDataStore(context)
+    }
 
-        DisposableEffect(
-            scheduleStore,
-            settingsDataStore
-        ) {
-            val receiver = object : BroadcastReceiver() {
+    DisposableEffect(
+        scheduleStore,
+        settingsDataStore
+    ) {
+        val receiver = object : BroadcastReceiver() {
 
-                override fun onReceive(
-                    c: Context?,
-                    intent: Intent?
-                ) {
-                    if (intent?.action != Intent.ACTION_TIME_TICK) {
-                        return
+            override fun onReceive(
+                c: Context?,
+                intent: Intent?
+            ) {
+                if (intent?.action != Intent.ACTION_TIME_TICK) {
+                    return
+                }
+
+                scope.launch {
+                    val globalReminderEnabled =
+                        settingsDataStore.getGlobalEventReminder()
+
+                    val onHomePage =
+                        backStack.lastOrNull() is MenuScreen
+
+                    if (!globalReminderEnabled || onHomePage) {
+                        return@launch
                     }
 
-                    scope.launch {
-                        val globalReminderEnabled =
-                            settingsDataStore.getGlobalEventReminder()
+                    val nowMinutes =
+                        currentSecondOfDay() / 60
 
-                        val onHomePage =
-                            backStack.lastOrNull() is MenuScreen
+                    val todayDate = todayDateString()
 
-                        if (!globalReminderEnabled || onHomePage) {
-                            return@launch
+                    val schedule = scheduleStore.getSchedule()
+
+                    val events = schedule.events
+                    val adjustments = schedule.adjustments
+
+                    val displayWeekday = effectiveWeekdayOnDate(
+                        todayDate,
+                        adjustments
+                    ) ?: todayWeekday()
+
+                    val prepEnabled =
+                        settingsDataStore.getPrepBell()
+
+                    eventsOnDate(
+                        events,
+                        adjustments,
+                        todayDate
+                    )
+                        .firstOrNull {
+                            toMinutes(it.startTime) == nowMinutes
+                        }
+                        ?.let { event ->
+                            showMessage(
+                                "${
+                                    eventDisplayNameFor(
+                                        event,
+                                        displayWeekday
+                                    )
+                                } 开始了"
+                            )
                         }
 
-                        val nowMinutes =
-                            currentSecondOfDay() / 60
-
-                        val todayDate = todayDateString()
-
-                        val schedule = scheduleStore.getSchedule()
-
-                        val events = schedule.events
-                        val adjustments = schedule.adjustments
-
-                        val displayWeekday = effectiveWeekdayOnDate(
-                            todayDate,
-                            adjustments
-                        ) ?: todayWeekday()
-
-                        val prepEnabled =
-                            settingsDataStore.getPrepBell()
-
+                    if (prepEnabled) {
                         eventsOnDate(
                             events,
                             adjustments,
                             todayDate
                         )
-                            .firstOrNull {
-                                toMinutes(it.startTime) == nowMinutes
+                            .firstOrNull { event ->
+                                if (event.type == ScheduleEventType.BREAK) {
+                                    return@firstOrNull false
+                                }
+
+                                val startMin = toMinutes(event.startTime)
+                                    ?: return@firstOrNull false
+
+                                startMin - 3 == nowMinutes
                             }
                             ?.let { event ->
-                                showMessage(
-                                    "${
-                                        eventDisplayNameFor(
-                                            event,
-                                            displayWeekday
-                                        )
-                                    } 开始了"
-                                )
+                                val name = event.courseNameByWeekday[
+                                    displayWeekday
+                                ] ?: event.courseName ?: "下一节课"
+
+                                showMessage("$name 即将开始")
                             }
-
-                        if (prepEnabled) {
-                            eventsOnDate(
-                                events,
-                                adjustments,
-                                todayDate
-                            )
-                                .firstOrNull { event ->
-                                    if (event.type == ScheduleEventType.BREAK) {
-                                        return@firstOrNull false
-                                    }
-
-                                    val startMin = toMinutes(event.startTime)
-                                        ?: return@firstOrNull false
-
-                                    startMin - 3 == nowMinutes
-                                }
-                                ?.let { event ->
-                                    val name = event.courseNameByWeekday[
-                                        displayWeekday
-                                    ] ?: event.courseName ?: "下一节课"
-
-                                    showMessage("$name 即将开始")
-                                }
-                        }
                     }
                 }
             }
+        }
 
-            context.registerReceiver(
-                receiver,
-                IntentFilter(Intent.ACTION_TIME_TICK)
-            )
+        context.registerReceiver(
+            receiver,
+            IntentFilter(Intent.ACTION_TIME_TICK)
+        )
 
-            onDispose {
-                context.unregisterReceiver(receiver)
-            }
+        onDispose {
+            context.unregisterReceiver(receiver)
         }
     }
 
-    var startupCountdownChecked by remember {
-        mutableStateOf(false)
-    }
-
-    LaunchedEffect(testModeLoaded) {
-        if (!testModeLoaded || startupCountdownChecked) {
-            return@LaunchedEffect
-        }
-
-        startupCountdownChecked = true
-
+    LaunchedEffect(Unit) {
         val countdownStore = CountdownDataStore(context)
 
         val upcoming = countdownStore.getDays()

@@ -29,6 +29,9 @@ fun Context.findActivity(): Activity? {
 }
 
 object RoundToast {
+    
+    @Volatile
+    var squareMode: Boolean = false
 
     const val LENGTH_SHORT = 0
     const val LENGTH_LONG = 1
@@ -110,7 +113,8 @@ object RoundToast {
 
         val toastView = RoundToastView(activity).apply {
             setText(message)
-
+            isSquare = squareMode
+        
             translationY = HIDDEN_TRANSLATION_Y
             alpha = 0f
         }

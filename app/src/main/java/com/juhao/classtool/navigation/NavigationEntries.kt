@@ -96,6 +96,9 @@ fun EntryProviderScope<NavKey>.toolEntries(
     entry<ToolCountdownNavScreen> {
         ToolCountdownScreen()
     }
+    entry<ClockNavScreen> {
+        ClockScreen()
+    }
 }
 
 fun EntryProviderScope<NavKey>.gameEntries(
@@ -119,13 +122,16 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     onNavigate: (AppKey) -> Unit,
 ) {
     entry<SettingsNavScreen> {
-        SettingsScreen(
-            onNavigateToBackup = { onNavigate(BackupRestoreNavScreen) },
-            onNavigateToAdjustment = { onNavigate(AdjustmentNavScreen) }
-        )
+        SettingsScreen(onChangePage = { onNavigate(it) })
+    }
+    entry<DeveloperNavScreen> {
+        DeveloperScreen()
     }
     entry<BackupRestoreNavScreen> {
         BackupRestoreScreen()
+    }
+    entry<ScheduleTableNavScreen> {
+        ScheduleTableScreen()
     }
     entry<AboutNavScreen> {
         AboutScreen()

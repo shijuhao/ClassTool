@@ -66,7 +66,7 @@ fun rememberAdaptiveTransformationSpec(square: Boolean): TransformationSpec {
 }
 
 @Composable
-fun KeepScreenOn(enabled: Boolean) {
+fun KeepScreenOn(enabled: Boolean = true) {
     val context = LocalContext.current
     val activity = context.findActivity()
 
