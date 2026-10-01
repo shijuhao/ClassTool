@@ -107,6 +107,12 @@ fun WearApp() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    fun navigateTo(key: NavKey) {
+        if (backStack.lastOrNull() != key) {
+            backStack.add(key)
+        }
+    }
+
     fun showMessage(text: String) {
         RoundToast.show(
             context,
@@ -132,7 +138,7 @@ fun WearApp() {
     } else {
         ScreenShape.ROUND
     }
-    
+
     LaunchedEffect(isSquare) {
         RoundToast.squareMode = isSquare
     }
@@ -157,49 +163,49 @@ fun WearApp() {
             currentEventUrgent = false
             return@LaunchedEffect
         }
-    
+
         val scheduleStore = ScheduleDataStore(context)
-    
+
         scheduleStore.tablesFlow.collectLatest {
             while (true) {
                 val schedule = scheduleStore.getSchedule()
                 val events = schedule.events
                 val adjustments = schedule.adjustments
-    
+
                 val todayDate = todayDateString()
-    
+
                 val displayWeekday = effectiveWeekdayOnDate(
                     todayDate,
                     adjustments
                 ) ?: todayWeekday()
-    
+
                 val nowSec = currentSecondOfDay()
                 val nowMinutes = nowSec / 60
-    
+
                 val active = findCurrentEventOnDate(
                     events,
                     adjustments,
                     todayDate,
                     nowMinutes
                 )
-    
+
                 val activeColorHex = active?.let {
                     it.courseColorByWeekday[displayWeekday] ?: it.courseColor
                 }
-    
+
                 currentEventColor = activeColorHex?.let {
                     parseColor(it)
                 }
-    
+
                 val remaining = active?.let {
                     (toMinutes(it.endTime) ?: Int.MAX_VALUE) - nowMinutes
                 } ?: Int.MAX_VALUE
-    
+
                 currentEventUrgent =
                     active?.urgent == true && remaining in 0..10
-    
+
                 val nowSecLong = nowSec.toLong()
-    
+
                 val nextBoundary = eventsOnDate(
                     events,
                     adjustments,
@@ -210,11 +216,11 @@ fun WearApp() {
                         val start = toMinutes(effective.startTime)
                             ?.toLong()
                             ?.times(60L)
-    
+
                         val end = toMinutes(effective.endTime)
                             ?.toLong()
                             ?.times(60L)
-    
+
                         sequenceOf(
                             start,
                             end,
@@ -224,12 +230,12 @@ fun WearApp() {
                     .filterNotNull()
                     .filter { it > nowSecLong }
                     .minOrNull()
-    
+
                 val sleepSec = nextBoundary
                     ?.minus(nowSecLong)
                     ?.coerceAtLeast(1L)
                     ?: (86400L - nowSecLong).coerceAtLeast(60L)
-    
+
                 delay((sleepSec * 1000L).milliseconds)
             }
         }
@@ -379,7 +385,7 @@ fun WearApp() {
                 GreetingScreen(
                     isActive = backStack.lastOrNull() is MenuScreen,
                     onChangePage = {
-                        backStack.add(it)
+                        navigateTo(it)
                     }
                 )
             }
@@ -391,7 +397,7 @@ fun WearApp() {
                     backStack.removeLastOrNull()
                 },
                 onNavigate = {
-                    backStack.add(it)
+                    navigateTo(it)
                 }
             )
 
@@ -400,25 +406,25 @@ fun WearApp() {
                     backStack.removeLastOrNull()
                 },
                 onNavigate = {
-                    backStack.add(it)
+                    navigateTo(it)
                 }
             )
 
             toolEntries(
                 onNavigate = {
-                    backStack.add(it)
+                    navigateTo(it)
                 }
             )
 
             gameEntries(
                 onNavigate = {
-                    backStack.add(it)
+                    navigateTo(it)
                 }
             )
 
             settingsEntries(
                 onNavigate = {
-                    backStack.add(it)
+                    navigateTo(it)
                 }
             )
         }
