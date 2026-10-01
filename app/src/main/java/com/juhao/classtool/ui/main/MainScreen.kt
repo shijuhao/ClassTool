@@ -264,11 +264,9 @@ private fun CurrentEventPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            }
+                            .minimumVerticalContentPadding(
+                                ButtonDefaults.minimumVerticalListContentPadding
+                            )
                             .then(
                                 if (isLast) {
                                     Modifier.minimumVerticalContentPadding(
@@ -298,11 +296,9 @@ private fun CurrentEventPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            },
+                            .minimumVerticalContentPadding(
+                                ButtonDefaults.minimumVerticalListContentPadding
+                            ),
                         transformation = SurfaceTransformation(transformationSpec),
                         title = eventDisplayNameFor(activeDisplayEvent, displayWeekday),
                         timeRange = if (isPrep) "即将开始" else "${activeDisplayEvent.startTime} - ${activeDisplayEvent.endTime}",
@@ -331,11 +327,9 @@ private fun CurrentEventPage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .transformedHeight(this, transformationSpec)
-                            .graphicsLayer {
-                                with(transformationSpec) {
-                                    applyContainerTransformation(scrollProgress)
-                                }
-                            }
+                            .minimumVerticalContentPadding(
+                                ButtonDefaults.minimumVerticalListContentPadding
+                            )
                             .then(
                                 if (isLast) {
                                     Modifier.minimumVerticalContentPadding(
