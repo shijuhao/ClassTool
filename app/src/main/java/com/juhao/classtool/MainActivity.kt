@@ -8,6 +8,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -431,6 +432,7 @@ fun WearApp() {
             LocalScreenShape provides screenShape
         ) {
             AppScaffold(
+                modifier = Modifier.safeDrawingPadding(),
                 timeText = {
                     if (screenShape == ScreenShape.SQUARE) {
                         SquareTimeText()

@@ -1,34 +1,34 @@
 package com.juhao.classtool.theme
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.wear.compose.material3.ColorScheme
 
-val primaryDark = Color(0xFFAAC7FF)
-val onPrimaryDark = Color(0xFF0A305F)
-val primaryContainerDark = Color(0xFF284777)
-val onPrimaryContainerDark = Color(0xFFD6E3FF)
-val secondaryDark = Color(0xFFBEC6DC)
-val onSecondaryDark = Color(0xFF283141)
-val secondaryContainerDark = Color(0xFF3E4759)
-val onSecondaryContainerDark = Color(0xFFDAE2F9)
-val tertiaryDark = Color(0xFFDDBCE0)
-val onTertiaryDark = Color(0xFF3F2844)
-val tertiaryContainerDark = Color(0xFF573E5C)
-val onTertiaryContainerDark = Color(0xFFFAD8FD)
-val errorDark = Color(0xFFFFB4AB)
-val onErrorDark = Color(0xFF690005)
-val errorContainerDark = Color(0xFF93000A)
-val onErrorContainerDark = Color(0xFFFFDAD6)
-val backgroundDark = Color(0xFF111318)
-val onBackgroundDark = Color(0xFFE2E2E9)
-val onSurfaceDark = Color(0xFFE2E2E9)
-val onSurfaceVariantDark = Color(0xFFC4C6D0)
-val outlineDark = Color(0xFF8E9099)
-val outlineVariantDark = Color(0xFF44474E)
-val surfaceContainerLowDark = Color(0xFF191C20)
-val surfaceContainerDark = Color(0xFF1D2024)
-val surfaceContainerHighDark = Color(0xFF282A2F)
+val primaryDark = Color(0xFFC2D6FF)
+val onPrimaryDark = Color(0xFF12345F)
+val primaryContainerDark = Color(0xFF2E4A73)
+val onPrimaryContainerDark = Color(0xFFE2ECFF)
+val secondaryDark = Color(0xFFD2DAEE)
+val onSecondaryDark = Color(0xFF354052)
+val secondaryContainerDark = Color(0xFF424B5C)
+val onSecondaryContainerDark = Color(0xFFE8EEFF)
+val tertiaryDark = Color(0xFFECCDEF)
+val onTertiaryDark = Color(0xFF4C3552)
+val tertiaryContainerDark = Color(0xFF5A4260)
+val onTertiaryContainerDark = Color(0xFFFFE4FF)
+val errorDark = Color(0xFFFFC4BC)
+val onErrorDark = Color(0xFF741210)
+val errorContainerDark = Color(0xFF8C1515)
+val onErrorContainerDark = Color(0xFFFFE5E1)
+val backgroundDark = Color(0xFF181A20)
+val onBackgroundDark = Color(0xFFE8E8EF)
+val onSurfaceDark = Color(0xFFE8E8EF)
+val onSurfaceVariantDark = Color(0xFFD0D2DC)
+val outlineDark = Color(0xFF9A9CA5)
+val outlineVariantDark = Color(0xFF525560)
+val surfaceContainerLowDark = Color(0xFF20232A)
+val surfaceContainerDark = Color(0xFF252830)
+val surfaceContainerHighDark = Color(0xFF30333B)
+
 internal val wearColorScheme: ColorScheme =
     ColorScheme(
         primary = primaryDark,
@@ -67,9 +67,6 @@ private fun blend(base: Color, tint: Color, amount: Float): Color = Color(
     blue = base.blue * (1f - amount) + tint.blue * amount,
     alpha = 1f
 )
-
-private fun contentOn(color: Color): Color =
-    if (color.luminance() > 0.45f) Color(0xFF1A1A1A) else Color(0xFFF5F5F5)
 
 private fun toHsl(color: Color): Triple<Float, Float, Float> {
     val r = color.red
@@ -113,20 +110,15 @@ private fun fromHsl(h: Float, s: Float, l: Float): Color {
     )
 }
 
-private fun tuneLightness(color: Color, targetL: Float): Color {
-    val (h, s, _) = toHsl(color)
-    return fromHsl(h, s, targetL.coerceIn(0f, 1f))
-}
-
 fun buildEventColorScheme(
     base: ColorScheme,
     eventColor: Color,
     eventUrgent: Boolean = false
 ): ColorScheme {
     if (eventUrgent) {
-        val surfaceContainerHigh = blend(base.surfaceContainerHigh, base.error, 0.14f)
-        val surfaceContainer = blend(base.surfaceContainer, base.error, 0.10f)
-        val surfaceContainerLow = blend(base.surfaceContainerLow, base.error, 0.06f)
+        val surfaceContainerHigh = blend(base.surfaceContainerHigh, base.error, 0.08f)
+        val surfaceContainer = blend(base.surfaceContainer, base.error, 0.06f)
+        val surfaceContainerLow = blend(base.surfaceContainerLow, base.error, 0.03f)
 
         return base.copy(
             primary = base.error,
@@ -152,31 +144,31 @@ fun buildEventColorScheme(
 
     val (eventH, eventS, eventL) = toHsl(eventColor)
 
-    val primary = if (eventL < 0.35f) {
-        fromHsl(eventH, eventS, 0.65f)
+    val primary = if (eventL < 0.45f) {
+        fromHsl(eventH, eventS, 0.78f)
     } else {
-        eventColor
+        fromHsl(eventH, eventS, (eventL + 0.15f).coerceAtMost(0.88f))
     }
-    val onPrimary = contentOn(primary)
+    val onPrimary = Color(0xFF1F1F1F)
 
-    val primaryContainer = fromHsl(eventH, (eventS * 0.85f).coerceAtLeast(0.35f), 0.28f)
-    val onPrimaryContainer = contentOn(primaryContainer)
+    val primaryContainer = fromHsl(eventH, (eventS * 0.85f).coerceAtLeast(0.35f), 0.22f)
+    val onPrimaryContainer = fromHsl(eventH, (eventS * 0.35f).coerceAtLeast(0.12f), 0.90f)
 
-    val secondary = fromHsl(eventH, (eventS * 0.55f).coerceAtLeast(0.25f), 0.72f)
-    val onSecondary = contentOn(secondary)
+    val secondary = fromHsl(eventH, (eventS * 0.55f).coerceAtLeast(0.25f), 0.82f)
+    val onSecondary = Color(0xFF1F1F1F)
 
-    val secondaryContainer = fromHsl(eventH, (eventS * 0.50f).coerceAtLeast(0.22f), 0.32f)
-    val onSecondaryContainer = contentOn(secondaryContainer)
+    val secondaryContainer = fromHsl(eventH, (eventS * 0.50f).coerceAtLeast(0.22f), 0.26f)
+    val onSecondaryContainer = fromHsl(eventH, (eventS * 0.30f).coerceAtLeast(0.10f), 0.91f)
 
-    val tertiary = fromHsl(eventH, (eventS * 0.45f).coerceAtLeast(0.20f), 0.75f)
-    val onTertiary = contentOn(tertiary)
+    val tertiary = fromHsl(eventH, (eventS * 0.45f).coerceAtLeast(0.20f), 0.85f)
+    val onTertiary = Color(0xFF1F1F1F)
 
-    val tertiaryContainer = fromHsl(eventH, (eventS * 0.40f).coerceAtLeast(0.18f), 0.36f)
-    val onTertiaryContainer = contentOn(tertiaryContainer)
+    val tertiaryContainer = fromHsl(eventH, (eventS * 0.40f).coerceAtLeast(0.18f), 0.30f)
+    val onTertiaryContainer = fromHsl(eventH, (eventS * 0.28f).coerceAtLeast(0.09f), 0.92f)
 
-    val surfaceContainerHigh = blend(base.surfaceContainerHigh, eventColor, 0.14f)
-    val surfaceContainer = blend(base.surfaceContainer, eventColor, 0.10f)
-    val surfaceContainerLow = blend(base.surfaceContainerLow, eventColor, 0.06f)
+    val surfaceContainerHigh = blend(base.surfaceContainerHigh, eventColor, 0.08f)
+    val surfaceContainer = blend(base.surfaceContainer, eventColor, 0.06f)
+    val surfaceContainerLow = blend(base.surfaceContainerLow, eventColor, 0.03f)
 
     return base.copy(
         primary = primary,
