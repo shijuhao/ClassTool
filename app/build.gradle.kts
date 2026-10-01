@@ -16,8 +16,8 @@ android {
         applicationId = "com.juhao.classtool"
         minSdk = 26
         targetSdk = 37
-        versionCode = 4
-        versionName = "1.0.2.1"
+        versionCode = 5
+        versionName = "1.0.3"
     }
 
     buildTypes {
