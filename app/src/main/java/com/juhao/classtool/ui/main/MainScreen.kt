@@ -44,7 +44,6 @@ fun GreetingScreen(
     val settingsStore = remember { SettingsDataStore(context) }
 
     val keepScreenOnSetting by settingsStore.keepScreenOnFlow.collectAsState(initial = false)
-    KeepScreenOn(enabled = keepScreenOnSetting && isActive)
 
     val scheduleFlow: Flow<List<ScheduleEvent>> = store.scheduleFlow.map { it.events }
     val schedule: List<ScheduleEvent> by scheduleFlow.collectAsState(initial = emptyList())
@@ -143,6 +142,7 @@ fun GreetingScreen(
 
     HorizontalPagerScaffold(pagerState = pagerState) {
         HorizontalPager(state = pagerState) { page ->
+            KeepScreenOn(enabled = keepScreenOnSetting && isActive && page == 0)
             when (page) {
                 0 -> CurrentEventPage(
                     activeDisplayEvent = activeDisplayEvent,
@@ -242,15 +242,16 @@ private fun CurrentEventPage(
             }
 
             item {
-                FilledTonalButton(
+                TitleCard(
                     onClick = { /* Do something */ },
-                    label = { Text("今日日程") },
-                    secondaryLabel = { Text(summaryLabel) },
+                    title = { Text("今日日程") },
                     transformation = SurfaceTransformation(transformationSpec),
                     modifier = Modifier
                         .fillMaxWidth()
                         .transformedHeight(this, transformationSpec)
-                )
+                ) {
+                    Text(summaryLabel)
+                }
             }
 
             if (pastEvents.isNotEmpty()) {

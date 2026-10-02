@@ -8,21 +8,34 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
+import androidx.navigation3.scene.Scene
 import androidx.wear.compose.material3.*
 import com.juhao.classtool.datastore.*
 import com.juhao.classtool.navigation.*
@@ -67,38 +80,76 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SquareTimeText() {
-    var currentTime by remember {
-        mutableStateOf(LocalTime.now())
-    }
+    var currentTime by remember { mutableStateOf(LocalTime.now()) }
 
     LaunchedEffect(Unit) {
         while (true) {
             currentTime = LocalTime.now()
-
             val delayMillis = (1000L - System.currentTimeMillis() % 1000L)
                 .coerceAtLeast(1L)
-
             delay(delayMillis)
         }
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = 12.dp,
-                vertical = 4.dp
-            ),
+        modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.TopCenter
     ) {
         Text(
-            text = currentTime.format(
-                DateTimeFormatter.ofPattern("HH:mm")
-            ),
+            text = currentTime.format(DateTimeFormatter.ofPattern("HH:mm")),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(50.dp))
+                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f))
+                .padding(horizontal = 10.dp)
         )
     }
+}
+
+private val EaseOut = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+private val EaseIn = CubicBezierEasing(0.4f, 0f, 1f, 1f)
+
+private const val DUR_IN = 200
+private const val DUR_OUT = 160
+private const val FADE_IN = 140
+private const val FADE_OUT = 120
+
+private val navTransitionSpec:
+    AnimatedContentTransitionScope<Scene<NavKey>>.() -> ContentTransform = {
+    slideInHorizontally(
+        initialOffsetX = { it / 6 },
+        animationSpec = tween(DUR_IN, easing = EaseOut)
+    ) + fadeIn(
+        animationSpec = tween(FADE_IN, easing = EaseOut)
+    ) togetherWith slideOutHorizontally(
+        targetOffsetX = { -it / 8 },
+        animationSpec = tween(DUR_OUT, easing = EaseIn)
+    ) + fadeOut(
+        animationSpec = tween(FADE_OUT, easing = EaseIn)
+    )
+}
+
+private val navPopTransitionSpec:
+    AnimatedContentTransitionScope<Scene<NavKey>>.() -> ContentTransform = {
+    fadeIn(
+        animationSpec = tween(180, easing = EaseOut)
+    ) + scaleIn(
+        initialScale = 0.98f,
+        animationSpec = tween(180, easing = EaseOut)
+    ) togetherWith fadeOut(
+        animationSpec = tween(120, easing = EaseIn)
+    )
+}
+
+private val navPredictivePopTransitionSpec:
+    AnimatedContentTransitionScope<Scene<NavKey>>.(Int) -> ContentTransform = { _ ->
+    fadeIn(
+        animationSpec = tween(160, easing = EaseOut)
+    ) togetherWith fadeOut(
+        animationSpec = tween(120, easing = EaseIn)
+    )
 }
 
 @Composable
@@ -147,6 +198,24 @@ fun WearApp() {
         .dynamicThemeFlow
         .collectAsState(
             initial = false
+        )
+
+    val useSystemColor by settingsDataStore
+        .useSystemColorFlow
+        .collectAsState(
+            initial = true
+        )
+
+    val appTheme by settingsDataStore
+        .appThemeFlow
+        .collectAsState(
+            initial = null
+        )
+
+    val customColor by settingsDataStore
+        .customColorFlow
+        .collectAsState(
+            initial = Color(0xFF9BD7FF)
         )
 
     var currentEventColor by remember {
@@ -423,6 +492,9 @@ fun WearApp() {
             )
 
             settingsEntries(
+                onBack = {
+                    backStack.removeLastOrNull()
+                },
                 onNavigate = {
                     navigateTo(it)
                 }
@@ -431,6 +503,9 @@ fun WearApp() {
     }
 
     WearAppTheme(
+        useSystemColor = useSystemColor,
+        theme = appTheme,
+        customColor = customColor,
         eventColor = themeEventColor,
         eventUrgent = themeEventUrgent
     ) {
@@ -447,15 +522,12 @@ fun WearApp() {
                     }
                 }
             ) {
-                val swipeDismissableSceneStrategy =
-                    rememberSwipeDismissableSceneStrategy<NavKey>()
-
                 NavDisplay(
                     backStack = backStack,
                     entryProvider = entryProvider,
-                    sceneStrategies = listOf(
-                        swipeDismissableSceneStrategy
-                    )
+                    transitionSpec = navTransitionSpec,
+                    popTransitionSpec = navPopTransitionSpec,
+                    predictivePopTransitionSpec = navPredictivePopTransitionSpec
                 )
             }
         }

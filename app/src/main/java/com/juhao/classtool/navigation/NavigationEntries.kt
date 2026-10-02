@@ -119,10 +119,19 @@ fun EntryProviderScope<NavKey>.gameEntries(
 }
 
 fun EntryProviderScope<NavKey>.settingsEntries(
-    onNavigate: (AppKey) -> Unit,
+    onBack: () -> Unit,
+    onNavigate: (AppKey) -> Unit
 ) {
     entry<SettingsNavScreen> {
         SettingsScreen(onChangePage = { onNavigate(it) })
+    }
+    entry<ThemeNavScreen> {
+        ThemeScreen(onNavigate = { onNavigate(it) })
+    }
+    entry<CustomThemeNavScreen> {
+        CustomThemeScreen(
+            onBack = onBack
+        )
     }
     entry<DeveloperNavScreen> {
         DeveloperScreen()

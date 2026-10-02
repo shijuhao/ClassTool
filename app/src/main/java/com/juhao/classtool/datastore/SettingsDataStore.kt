@@ -1,14 +1,17 @@
 package com.juhao.classtool.datastore
 
 import android.content.Context
+import androidx.compose.ui.graphics.Color
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.juhao.classtool.theme.AppTheme
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -34,6 +37,9 @@ class SettingsDataStore(private val context: Context) {
     private val keepScreenOnKey = booleanPreferencesKey("keep_screen_on")
     private val uiScaleKey = floatPreferencesKey("ui_scale")
     private val dynamicThemeKey = booleanPreferencesKey("dynamic_theme")
+    private val appThemeKey = stringPreferencesKey("app_theme")
+    private val useSystemColorKey = booleanPreferencesKey("use_system_color")
+    private val customColorKey = longPreferencesKey("custom_color")
 
     val testModeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
         preferences[testModeKey] ?: false
@@ -161,6 +167,57 @@ class SettingsDataStore(private val context: Context) {
     suspend fun setDynamicTheme(enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[dynamicThemeKey] = enabled
+        }
+    }
+
+    val appThemeFlow: Flow<AppTheme?> = context.settingsDataStore.data.map { preferences ->
+        val raw = preferences[appThemeKey] ?: return@map null
+        runCatching { AppTheme.valueOf(raw) }.getOrNull()
+    }
+
+    suspend fun getAppTheme(): AppTheme? =
+        context.settingsDataStore.data.map { preferences ->
+            val raw = preferences[appThemeKey] ?: return@map null
+            runCatching { AppTheme.valueOf(raw) }.getOrNull()
+        }.first()
+
+    suspend fun setAppTheme(theme: AppTheme?) {
+        context.settingsDataStore.edit { preferences ->
+            if (theme == null) {
+                preferences.remove(appThemeKey)
+            } else {
+                preferences[appThemeKey] = theme.name
+            }
+        }
+    }
+
+    val useSystemColorFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
+        preferences[useSystemColorKey] ?: true
+    }
+
+    suspend fun getUseSystemColor(): Boolean =
+        context.settingsDataStore.data.map { it[useSystemColorKey] ?: true }.first()
+
+    suspend fun setUseSystemColor(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[useSystemColorKey] = enabled
+        }
+    }
+
+    val customColorFlow: Flow<Color> = context.settingsDataStore.data.map { preferences ->
+        val raw = preferences[customColorKey] ?: return@map Color(0xFF9BD7FF)
+        Color(raw.toULong())
+    }
+
+    suspend fun getCustomColor(): Color =
+        context.settingsDataStore.data.map { preferences ->
+            val raw = preferences[customColorKey] ?: return@map Color(0xFF9BD7FF)
+            Color(raw.toULong())
+        }.first()
+
+    suspend fun setCustomColor(color: Color) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[customColorKey] = color.value.toLong()
         }
     }
 }

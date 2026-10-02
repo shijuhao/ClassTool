@@ -53,6 +53,10 @@ data object ReactionNavScreen : AppKey
 @Serializable
 data object SettingsNavScreen : AppKey
 @Serializable
+data object ThemeNavScreen : AppKey
+@Serializable
+data object CustomThemeNavScreen : AppKey
+@Serializable
 data object DeveloperNavScreen : AppKey
 @Serializable
 data object AdjustmentNavScreen : AppKey

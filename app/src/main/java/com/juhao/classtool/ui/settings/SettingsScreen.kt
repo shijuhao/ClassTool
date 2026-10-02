@@ -14,6 +14,7 @@ import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
 import com.juhao.classtool.datastore.ScreenShapeMode
 import com.juhao.classtool.datastore.SettingsDataStore
+import com.juhao.classtool.theme.AppTheme
 import com.juhao.classtool.utils.*
 import com.juhao.classtool.navigation.*
 import kotlinx.coroutines.launch
@@ -40,7 +41,6 @@ fun SettingsScreen(
     val classDuration by store.classDurationFlow.collectAsState(initial = 40)
     val breakDuration by store.breakDurationFlow.collectAsState(initial = 10)
     val uiScale by store.uiScaleFlow.collectAsState(initial = 1.0f)
-    val dynamicTheme by store.dynamicThemeFlow.collectAsState(initial = true)
 
     ScreenScaffold(
         scrollState = listState
@@ -61,7 +61,26 @@ fun SettingsScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 ) { Text(text = "设置") }
             }
-            
+
+            item {
+                FilledTonalButton(
+                    onClick = { onChangePage(ThemeNavScreen) },
+                    label = { Text("主题") },
+                    secondaryLabel = { Text("选择应用主题与事件动态主题") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Palette,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+
             item {
                 FilledTonalButton(
                     onClick = { onChangePage(AdjustmentNavScreen) },
@@ -80,7 +99,7 @@ fun SettingsScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
-            
+
             item {
                 FilledTonalButton(
                     onClick = { onChangePage(ScheduleTableNavScreen) },
@@ -183,37 +202,6 @@ fun SettingsScreen(
                     icon = {
                         Icon(
                             imageVector = MaterialSymbols.Rounded.Lightbulb,
-                            contentDescription = null
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .transformedHeight(this, transformationSpec),
-                    transformation = SurfaceTransformation(transformationSpec)
-                )
-            }
-
-            item {
-                SwitchButton(
-                    checked = dynamicTheme,
-                    onCheckedChange = { checked ->
-                        scope.launch { store.setDynamicTheme(checked) }
-                    },
-                    label = {
-                        Text(
-                            text = "事件动态主题",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    secondaryLabel = {
-                        Text(
-                            text = if (dynamicTheme) "根据当前事件色调整主题" else "关闭",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    icon = {
-                        Icon(
-                            imageVector = MaterialSymbols.Rounded.Palette,
                             contentDescription = null
                         )
                     },
