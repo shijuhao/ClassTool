@@ -43,6 +43,7 @@ class SettingsDataStore(private val context: Context) {
     private val appThemeKey = stringPreferencesKey("app_theme")
     private val useSystemColorKey = booleanPreferencesKey("use_system_color")
     private val customColorKey = longPreferencesKey("custom_color")
+    private val pureBlackBackgroundKey = booleanPreferencesKey("pure_black_background")
 
     private fun <T> preferenceFlow(key: Preferences.Key<T>, default: T): Flow<T> =
         dataStore.data.map { it[key] ?: default }
@@ -125,4 +126,9 @@ class SettingsDataStore(private val context: Context) {
 
     suspend fun setCustomColor(color: Color) =
         setPreference(customColorKey, color.value.toLong())
+
+    val pureBlackBackgroundFlow = preferenceFlow(pureBlackBackgroundKey, false)
+    suspend fun getPureBlackBackground() = getPreference(pureBlackBackgroundKey, false)
+    suspend fun setPureBlackBackground(enabled: Boolean) =
+        setPreference(pureBlackBackgroundKey, enabled)
 }

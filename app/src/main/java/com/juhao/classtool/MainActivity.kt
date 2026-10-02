@@ -217,6 +217,12 @@ fun WearApp() {
             initial = Color(0xFF9BD7FF)
         )
 
+    val pureBlackBackground by settingsDataStore
+        .pureBlackBackgroundFlow
+        .collectAsState(
+            initial = false
+        )
+
     val dynamicThemeState = rememberDynamicThemeState(
         enabled = dynamicThemeEnabled,
         context = context
@@ -428,7 +434,15 @@ fun WearApp() {
             LocalScreenShape provides screenShape
         ) {
             AppScaffold(
-                modifier = Modifier.safeDrawingPadding(),
+                modifier = Modifier
+                    .then(
+                        if (pureBlackBackground) {
+                            Modifier.background(Color.Black)
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .safeDrawingPadding(),
                 timeText = {
                     if (screenShape == ScreenShape.SQUARE) {
                         SquareTimeText()

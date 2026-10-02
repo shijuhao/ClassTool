@@ -32,6 +32,7 @@ fun ThemeScreen(
     val useSystemColor by store.useSystemColorFlow.collectAsState(initial = true)
     val appTheme by store.appThemeFlow.collectAsState(initial = null)
     val dynamicTheme by store.dynamicThemeFlow.collectAsState(initial = true)
+    val pureBlackBackground by store.pureBlackBackgroundFlow.collectAsState(initial = false)
 
     val themes = remember { AppTheme.entries.filter { it != AppTheme.CUSTOM } }
 
@@ -76,6 +77,37 @@ fun ThemeScreen(
                     icon = {
                         Icon(
                             imageVector = MaterialSymbols.Rounded.Auto_awesome,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+            
+            item {
+                SwitchButton(
+                    checked = pureBlackBackground,
+                    onCheckedChange = { checked ->
+                        scope.launch { store.setPureBlackBackground(checked) }
+                    },
+                    label = {
+                        Text(
+                            text = "纯黑背景",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    secondaryLabel = {
+                        Text(
+                            text = if (pureBlackBackground) "使用纯黑色背景" else "关闭",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Dark_mode,
                             contentDescription = null
                         )
                     },
