@@ -46,7 +46,6 @@ import com.juhao.classtool.ui.components.RoundToast
 import com.juhao.classtool.theme.WearAppTheme
 import com.juhao.classtool.utils.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.LocalTime
@@ -218,97 +217,13 @@ fun WearApp() {
             initial = Color(0xFF9BD7FF)
         )
 
-    var currentEventColor by remember {
-        mutableStateOf<Color?>(null)
-    }
+    val dynamicThemeState = rememberDynamicThemeState(
+        enabled = dynamicThemeEnabled,
+        context = context
+    )
 
-    var currentEventUrgent by remember {
-        mutableStateOf(false)
-    }
-
-    LaunchedEffect(dynamicThemeEnabled) {
-        if (!dynamicThemeEnabled) {
-            currentEventColor = null
-            currentEventUrgent = false
-            return@LaunchedEffect
-        }
-
-        val scheduleStore = ScheduleDataStore(context)
-
-        scheduleStore.tablesFlow.collectLatest {
-            while (true) {
-                val schedule = scheduleStore.getSchedule()
-                val events = schedule.events
-                val adjustments = schedule.adjustments
-
-                val todayDate = todayDateString()
-
-                val displayWeekday = effectiveWeekdayOnDate(
-                    todayDate,
-                    adjustments
-                ) ?: todayWeekday()
-
-                val nowSec = currentSecondOfDay()
-                val nowMinutes = nowSec / 60
-
-                val active = findCurrentEventOnDate(
-                    events,
-                    adjustments,
-                    todayDate,
-                    nowMinutes
-                )
-
-                val activeColorHex = active?.let {
-                    it.courseColorByWeekday[displayWeekday] ?: it.courseColor
-                }
-
-                currentEventColor = activeColorHex?.let {
-                    parseColor(it)
-                }
-
-                val remaining = active?.let {
-                    (toMinutes(it.endTime) ?: Int.MAX_VALUE) - nowMinutes
-                } ?: Int.MAX_VALUE
-
-                currentEventUrgent =
-                    active?.urgent == true && remaining in 0..10
-
-                val nowSecLong = nowSec.toLong()
-
-                val nextBoundary = eventsOnDate(
-                    events,
-                    adjustments,
-                    todayDate
-                )
-                    .asSequence()
-                    .flatMap { effective ->
-                        val start = toMinutes(effective.startTime)
-                            ?.toLong()
-                            ?.times(60L)
-
-                        val end = toMinutes(effective.endTime)
-                            ?.toLong()
-                            ?.times(60L)
-
-                        sequenceOf(
-                            start,
-                            end,
-                            end?.minus(600L)
-                        )
-                    }
-                    .filterNotNull()
-                    .filter { it > nowSecLong }
-                    .minOrNull()
-
-                val sleepSec = nextBoundary
-                    ?.minus(nowSecLong)
-                    ?.coerceAtLeast(1L)
-                    ?: (86400L - nowSecLong).coerceAtLeast(60L)
-
-                delay((sleepSec * 1000L).milliseconds)
-            }
-        }
-    }
+    val currentEventColor = dynamicThemeState.color
+    val currentEventUrgent = dynamicThemeState.urgent
 
     val themeEventColor = if (dynamicThemeEnabled) {
         currentEventColor

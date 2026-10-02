@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -28,6 +28,9 @@ val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class SettingsDataStore(private val context: Context) {
 
+    private val dataStore: DataStore<Preferences>
+        get() = context.settingsDataStore
+
     private val testModeKey = booleanPreferencesKey("test_mode")
     private val classDurationKey = intPreferencesKey("class_duration_minutes")
     private val breakDurationKey = intPreferencesKey("break_duration_minutes")
@@ -41,183 +44,85 @@ class SettingsDataStore(private val context: Context) {
     private val useSystemColorKey = booleanPreferencesKey("use_system_color")
     private val customColorKey = longPreferencesKey("custom_color")
 
-    val testModeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
-        preferences[testModeKey] ?: false
+    private fun <T> preferenceFlow(key: Preferences.Key<T>, default: T): Flow<T> =
+        dataStore.data.map { it[key] ?: default }
+
+    private suspend fun <T> getPreference(key: Preferences.Key<T>, default: T): T =
+        dataStore.data.first()[key] ?: default
+
+    private suspend fun <T> setPreference(key: Preferences.Key<T>, value: T) {
+        dataStore.edit { it[key] = value }
     }
 
-    suspend fun getTestMode(): Boolean =
-        context.settingsDataStore.data.map { it[testModeKey] ?: false }.first()
+    val testModeFlow = preferenceFlow(testModeKey, false)
+    suspend fun getTestMode() = getPreference(testModeKey, false)
+    suspend fun setTestMode(enabled: Boolean) = setPreference(testModeKey, enabled)
 
-    suspend fun setTestMode(enabled: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[testModeKey] = enabled
-        }
+    val prepBellFlow = preferenceFlow(prepBellKey, true)
+    suspend fun getPrepBell() = getPreference(prepBellKey, true)
+    suspend fun setPrepBell(enabled: Boolean) = setPreference(prepBellKey, enabled)
+
+    val globalEventReminderFlow = preferenceFlow(globalEventReminderKey, true)
+    suspend fun getGlobalEventReminder() = getPreference(globalEventReminderKey, true)
+    suspend fun setGlobalEventReminder(enabled: Boolean) =
+        setPreference(globalEventReminderKey, enabled)
+
+    val screenShapeModeFlow: Flow<ScreenShapeMode> = dataStore.data.map { preferences ->
+        preferences[screenShapeModeKey]
+            ?.let { runCatching { ScreenShapeMode.valueOf(it) }.getOrDefault(ScreenShapeMode.AUTO) }
+            ?: ScreenShapeMode.AUTO
     }
 
-    val prepBellFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
-        preferences[prepBellKey] ?: true
+    suspend fun getScreenShapeMode(): ScreenShapeMode = screenShapeModeFlow.first()
+
+    suspend fun setScreenShapeMode(mode: ScreenShapeMode) =
+        setPreference(screenShapeModeKey, mode.name)
+
+    val keepScreenOnFlow = preferenceFlow(keepScreenOnKey, false)
+    suspend fun getKeepScreenOn() = getPreference(keepScreenOnKey, false)
+    suspend fun setKeepScreenOn(enabled: Boolean) = setPreference(keepScreenOnKey, enabled)
+
+    val classDurationFlow = preferenceFlow(classDurationKey, 40)
+    val breakDurationFlow = preferenceFlow(breakDurationKey, 10)
+
+    suspend fun getClassDuration() = getPreference(classDurationKey, 40)
+    suspend fun setClassDuration(minutes: Int) = setPreference(classDurationKey, minutes)
+
+    suspend fun getBreakDuration() = getPreference(breakDurationKey, 10)
+    suspend fun setBreakDuration(minutes: Int) = setPreference(breakDurationKey, minutes)
+
+    val uiScaleFlow = preferenceFlow(uiScaleKey, 1.0f)
+    suspend fun getUiScale() = getPreference(uiScaleKey, 1.0f)
+    suspend fun setUiScale(scale: Float) =
+        setPreference(uiScaleKey, scale.coerceIn(0.5f, 1.5f))
+
+    val dynamicThemeFlow = preferenceFlow(dynamicThemeKey, true)
+    suspend fun getDynamicTheme() = getPreference(dynamicThemeKey, true)
+    suspend fun setDynamicTheme(enabled: Boolean) = setPreference(dynamicThemeKey, enabled)
+
+    val appThemeFlow: Flow<AppTheme?> = dataStore.data.map { preferences ->
+        preferences[appThemeKey]?.let { runCatching { AppTheme.valueOf(it) }.getOrNull() }
     }
 
-    suspend fun getPrepBell(): Boolean =
-        context.settingsDataStore.data.map { it[prepBellKey] ?: true }.first()
-
-    suspend fun setPrepBell(enabled: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[prepBellKey] = enabled
-        }
-    }
-
-    val globalEventReminderFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
-        preferences[globalEventReminderKey] ?: true
-    }
-
-    suspend fun getGlobalEventReminder(): Boolean =
-        context.settingsDataStore.data.map { it[globalEventReminderKey] ?: true }.first()
-
-    suspend fun setGlobalEventReminder(enabled: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[globalEventReminderKey] = enabled
-        }
-    }
-
-    val screenShapeModeFlow: Flow<ScreenShapeMode> = context.settingsDataStore.data.map { preferences ->
-        val raw = preferences[screenShapeModeKey]
-        if (raw == null) {
-            ScreenShapeMode.AUTO
-        } else {
-            runCatching { ScreenShapeMode.valueOf(raw) }.getOrDefault(ScreenShapeMode.AUTO)
-        }
-    }
-
-    suspend fun getScreenShapeMode(): ScreenShapeMode =
-        context.settingsDataStore.data.map { preferences ->
-            val raw = preferences[screenShapeModeKey]
-            if (raw == null) {
-                ScreenShapeMode.AUTO
-            } else {
-                runCatching { ScreenShapeMode.valueOf(raw) }.getOrDefault(ScreenShapeMode.AUTO)
-            }
-        }.first()
-
-    suspend fun setScreenShapeMode(mode: ScreenShapeMode) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[screenShapeModeKey] = mode.name
-        }
-    }
-
-    val keepScreenOnFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
-        preferences[keepScreenOnKey] ?: false
-    }
-
-    suspend fun getKeepScreenOn(): Boolean =
-        context.settingsDataStore.data.map { it[keepScreenOnKey] ?: false }.first()
-
-    suspend fun setKeepScreenOn(enabled: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[keepScreenOnKey] = enabled
-        }
-    }
-
-    val classDurationFlow: Flow<Int> = context.settingsDataStore.data.map { preferences ->
-        preferences[classDurationKey] ?: 40
-    }
-
-    val breakDurationFlow: Flow<Int> = context.settingsDataStore.data.map { preferences ->
-        preferences[breakDurationKey] ?: 10
-    }
-
-    suspend fun getClassDuration(): Int =
-        context.settingsDataStore.data.map { it[classDurationKey] ?: 40 }.first()
-
-    suspend fun setClassDuration(minutes: Int) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[classDurationKey] = minutes
-        }
-    }
-
-    suspend fun getBreakDuration(): Int =
-        context.settingsDataStore.data.map { it[breakDurationKey] ?: 10 }.first()
-
-    suspend fun setBreakDuration(minutes: Int) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[breakDurationKey] = minutes
-        }
-    }
-
-    val uiScaleFlow: Flow<Float> = context.settingsDataStore.data.map { preferences ->
-        preferences[uiScaleKey] ?: 1.0f
-    }
-
-    suspend fun getUiScale(): Float =
-        context.settingsDataStore.data.map { it[uiScaleKey] ?: 1.0f }.first()
-
-    suspend fun setUiScale(scale: Float) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[uiScaleKey] = scale.coerceIn(0.5f, 1.5f)
-        }
-    }
-
-    val dynamicThemeFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
-        preferences[dynamicThemeKey] ?: true
-    }
-
-    suspend fun getDynamicTheme(): Boolean =
-        context.settingsDataStore.data.map { it[dynamicThemeKey] ?: true }.first()
-
-    suspend fun setDynamicTheme(enabled: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[dynamicThemeKey] = enabled
-        }
-    }
-
-    val appThemeFlow: Flow<AppTheme?> = context.settingsDataStore.data.map { preferences ->
-        val raw = preferences[appThemeKey] ?: return@map null
-        runCatching { AppTheme.valueOf(raw) }.getOrNull()
-    }
-
-    suspend fun getAppTheme(): AppTheme? =
-        context.settingsDataStore.data.map { preferences ->
-            val raw = preferences[appThemeKey] ?: return@map null
-            runCatching { AppTheme.valueOf(raw) }.getOrNull()
-        }.first()
+    suspend fun getAppTheme(): AppTheme? = appThemeFlow.first()
 
     suspend fun setAppTheme(theme: AppTheme?) {
-        context.settingsDataStore.edit { preferences ->
-            if (theme == null) {
-                preferences.remove(appThemeKey)
-            } else {
-                preferences[appThemeKey] = theme.name
-            }
+        dataStore.edit { preferences ->
+            if (theme == null) preferences.remove(appThemeKey)
+            else preferences[appThemeKey] = theme.name
         }
     }
 
-    val useSystemColorFlow: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
-        preferences[useSystemColorKey] ?: true
+    val useSystemColorFlow = preferenceFlow(useSystemColorKey, true)
+    suspend fun getUseSystemColor() = getPreference(useSystemColorKey, true)
+    suspend fun setUseSystemColor(enabled: Boolean) = setPreference(useSystemColorKey, enabled)
+
+    val customColorFlow: Flow<Color> = dataStore.data.map { preferences ->
+        preferences[customColorKey]?.let { Color(it.toULong()) } ?: Color(0xFF9BD7FF)
     }
 
-    suspend fun getUseSystemColor(): Boolean =
-        context.settingsDataStore.data.map { it[useSystemColorKey] ?: true }.first()
+    suspend fun getCustomColor(): Color = customColorFlow.first()
 
-    suspend fun setUseSystemColor(enabled: Boolean) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[useSystemColorKey] = enabled
-        }
-    }
-
-    val customColorFlow: Flow<Color> = context.settingsDataStore.data.map { preferences ->
-        val raw = preferences[customColorKey] ?: return@map Color(0xFF9BD7FF)
-        Color(raw.toULong())
-    }
-
-    suspend fun getCustomColor(): Color =
-        context.settingsDataStore.data.map { preferences ->
-            val raw = preferences[customColorKey] ?: return@map Color(0xFF9BD7FF)
-            Color(raw.toULong())
-        }.first()
-
-    suspend fun setCustomColor(color: Color) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[customColorKey] = color.value.toLong()
-        }
-    }
+    suspend fun setCustomColor(color: Color) =
+        setPreference(customColorKey, color.value.toLong())
 }

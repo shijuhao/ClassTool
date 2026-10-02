@@ -243,7 +243,7 @@ private fun CurrentEventPage(
 
             item {
                 TitleCard(
-                    onClick = { /* Do something */ },
+                    onClick = {  },
                     title = { Text("今日日程") },
                     transformation = SurfaceTransformation(transformationSpec),
                     modifier = Modifier

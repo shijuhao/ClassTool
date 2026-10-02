@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -17,6 +16,7 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
+import com.juhao.classtool.datastore.Schedule
 import com.juhao.classtool.datastore.ScheduleAdjustment
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.Weekday
@@ -36,13 +36,8 @@ fun AdjustmentScreen(modifier: Modifier = Modifier) {
     val square = LocalScreenShape.current == ScreenShape.SQUARE
     val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
-    var refreshKey by remember { mutableIntStateOf(0) }
-    val adjustments by produceState(
-        initialValue = emptyList<ScheduleAdjustment>(),
-        refreshKey
-    ) {
-        value = store.getSchedule().adjustments
-    }
+    val schedule by store.scheduleFlow.collectAsState(initial = Schedule())
+    val adjustments = schedule.adjustments
 
     var showDialog by remember { mutableStateOf(false) }
     var editingAdjustment by remember { mutableStateOf<ScheduleAdjustment?>(null) }
@@ -60,7 +55,6 @@ fun AdjustmentScreen(modifier: Modifier = Modifier) {
                         store.updateAdjustment(adjustment)
                     }
                     if (result.valid) {
-                        refreshKey++
                         showDialog = false
                         RoundToast.show(context, "操作成功")
                     } else {
@@ -96,7 +90,6 @@ fun AdjustmentScreen(modifier: Modifier = Modifier) {
                         deleteAdjustment = null
                         scope.launch {
                             store.removeAdjustment(target.id)
-                            refreshKey++
                             RoundToast.show(context, "已删除")
                         }
                     },
@@ -277,12 +270,12 @@ private fun AdjustmentEditDialog(
             AlertDialogDefaults.ConfirmButton(
                 onClick = {
                     if (invalidRange || sameWeekday) return@ConfirmButton
-                    val adjustment = (existing ?: ScheduleAdjustment(
+                    val adjustment = existing?.copy(
                         startDate = startDate,
                         endDate = endDate,
                         fromWeekday = fromWeekday,
                         toWeekday = toWeekday
-                    )).copy(
+                    ) ?: ScheduleAdjustment(
                         startDate = startDate,
                         endDate = endDate,
                         fromWeekday = fromWeekday,

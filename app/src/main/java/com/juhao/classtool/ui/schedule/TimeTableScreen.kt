@@ -19,10 +19,12 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
+import com.juhao.classtool.datastore.Schedule
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
 import com.juhao.classtool.datastore.ScheduleValidationResult
+import com.juhao.classtool.datastore.ScheduleValidator
 import com.juhao.classtool.datastore.SettingsDataStore
 import com.juhao.classtool.datastore.Weekday
 import com.juhao.classtool.datastore.WeekdayScope
@@ -72,18 +74,14 @@ fun TimeTableScreen(modifier: Modifier = Modifier) {
 
     var showDialog by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
-    var refreshKey by remember { mutableIntStateOf(0) }
 
     var actionEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
     var deleteEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
 
-    val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
-        value = store.getSchedule().events
-    }
-    val adjustments by produceState(initialValue = emptyList<com.juhao.classtool.datastore.ScheduleAdjustment>(), refreshKey) {
-        value = store.getSchedule().adjustments
-    }
-
+    val scheduleState by store.scheduleFlow.collectAsState(initial = Schedule())
+    val schedule = scheduleState.events
+    val adjustments = scheduleState.adjustments
+    
     var nowMinutes by remember { mutableIntStateOf(currentMinutes()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -126,7 +124,6 @@ fun TimeTableScreen(modifier: Modifier = Modifier) {
                         store.addEvent(event)
                     }
                     if (result.valid) {
-                        refreshKey++
                         showDialog = false
                         RoundToast.show(context, "操作成功")
                     } else {
@@ -229,7 +226,6 @@ fun TimeTableScreen(modifier: Modifier = Modifier) {
                         deleteEvent = null
                         scope.launch {
                             store.removeEvent(target.id)
-                            refreshKey++
                         }
                     },
                     icon = {
@@ -377,7 +373,7 @@ private fun EventListCard(
             .then(
                 if (highlighted) Modifier.border(
                     2.dp,
-                    MaterialTheme.colorScheme.primaryContainer,
+                    dotColor,
                     RoundedCornerShape(50.dp)
                 ) else Modifier
             )
@@ -518,7 +514,8 @@ private fun EventEditDialog(
                         courseNameByWeekday = filteredNameByWeekday,
                         courseColorByWeekday = filteredColorByWeekday,
                         enabled = true,
-                        urgent = urgent
+                        urgent = urgent,
+                        transfers = existing?.transfers ?: emptyList()
                     )
                     onConfirm(event)
                 }
@@ -807,20 +804,14 @@ private fun hasConflict(
     selectedDays: Set<Weekday>,
     allEvents: List<ScheduleEvent>,
     selfIds: Set<String>
-): Boolean {
-    val newStart = toMinutes(startTime)
-    val newEnd = toMinutes(endTime)
-    if (newStart == null || newEnd == null || newEnd <= newStart) return true
-    if (selectedDays.isEmpty()) return true
-    return allEvents.any { other ->
-        other.enabled &&
-            other.id !in selfIds &&
-            selectedDays.intersect(other.weekdays).isNotEmpty() &&
-            toMinutes(other.startTime)?.let { os ->
-                toMinutes(other.endTime)?.let { oe -> newStart < oe && os < newEnd }
-            } == true
-    }
-}
+): Boolean =
+    !ScheduleValidator.findConflict(
+        events = allEvents,
+        startTime = startTime,
+        endTime = endTime,
+        weekdays = selectedDays,
+        selfIds = selfIds
+    ).valid
 
 private fun scopeOf(days: Set<Weekday>): WeekdayScope = when (days) {
     WORKDAYS -> WeekdayScope.WORKDAY

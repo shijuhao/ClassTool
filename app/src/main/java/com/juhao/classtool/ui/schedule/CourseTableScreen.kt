@@ -19,10 +19,10 @@ import androidx.wear.compose.material3.*
 import androidx.wear.compose.material3.lazy.transformedHeight
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.rounded.*
+import com.juhao.classtool.datastore.Schedule
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleEvent
 import com.juhao.classtool.datastore.ScheduleEventType
-import com.juhao.classtool.datastore.SettingsDataStore
 import com.juhao.classtool.datastore.Weekday
 import com.juhao.classtool.ui.components.RoundToast
 import com.juhao.classtool.utils.*
@@ -52,9 +52,6 @@ fun CourseTableScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { ScheduleDataStore(context) }
-    val settingsStore = remember { SettingsDataStore(context) }
-
-    val classDuration by settingsStore.classDurationFlow.collectAsState(initial = 40)
 
     val weekdays = Weekday.entries.toList()
     val today = todayWeekday()
@@ -63,13 +60,9 @@ fun CourseTableScreen(modifier: Modifier = Modifier) {
         pageCount = { weekdays.size }
     )
 
-    var refreshKey by remember { mutableIntStateOf(0) }
-    val schedule by produceState(initialValue = emptyList<ScheduleEvent>(), refreshKey) {
-        value = store.getSchedule().events
-    }
-    val adjustments by produceState(initialValue = emptyList<com.juhao.classtool.datastore.ScheduleAdjustment>(), refreshKey) {
-        value = store.getSchedule().adjustments
-    }
+    val scheduleState by store.scheduleFlow.collectAsState(initial = Schedule())
+    val schedule = scheduleState.events
+    val adjustments = scheduleState.adjustments
 
     var editingEvent by remember { mutableStateOf<ScheduleEvent?>(null) }
     var editingWeekday by remember { mutableStateOf<Weekday?>(null) }
@@ -88,7 +81,6 @@ fun CourseTableScreen(modifier: Modifier = Modifier) {
                 scope.launch {
                     if (name == null) store.clearCourseForWeekday(editTarget.id, editWeekday)
                     else store.setCourseForWeekday(editTarget.id, editWeekday, name, color)
-                    refreshKey++
                 }
                 editingEvent = null
                 editingWeekday = null
@@ -105,7 +97,7 @@ fun CourseTableScreen(modifier: Modifier = Modifier) {
             val square = LocalScreenShape.current == ScreenShape.SQUARE
             val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
-            val dayClasses = eventsForWeekday(schedule, adjustments, weekday, date)
+            val dayClasses = eventsOnDate(schedule, adjustments, date)
                 .filter { it.type == ScheduleEventType.CLASS }
 
             ScreenScaffold(scrollState = listState) { contentPadding ->

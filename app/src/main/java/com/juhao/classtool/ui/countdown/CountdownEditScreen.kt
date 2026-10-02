@@ -230,7 +230,6 @@ fun CountdownEditScreen(
             item {
                 Button(
                     onClick = {
-                        if (title.isBlank()) return@Button
                         scope.launch {
                             store.upsert(
                                 CountdownDay(
@@ -263,6 +262,7 @@ fun CountdownEditScreen(
                             modifier = Modifier.size(ButtonDefaults.IconSize),
                         )
                     },
+                    enabled = title.isNotBlank(),
                     label = { Text("保存") },
                     modifier = Modifier
                         .fillMaxWidth()

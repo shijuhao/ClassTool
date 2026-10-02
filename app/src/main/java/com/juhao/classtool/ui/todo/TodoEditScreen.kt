@@ -102,7 +102,6 @@ fun TodoEditScreen(
             item {
                 Button(
                     onClick = {
-                        if (title.isBlank()) return@Button
                         scope.launch {
                             store.upsert(
                                 TodoItem(
@@ -114,6 +113,7 @@ fun TodoEditScreen(
                             onBack()
                         }
                     },
+                    enabled = title.isNotBlank(),
                     icon = {
                         Icon(
                             imageVector = MaterialSymbols.Rounded.Save,

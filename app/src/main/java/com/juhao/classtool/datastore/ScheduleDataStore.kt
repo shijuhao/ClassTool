@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -89,13 +90,13 @@ data class ScheduleValidationResult(val valid: Boolean, val reason: String? = nu
 object ScheduleValidator {
 
     private val TIME_REGEX = Regex("""^([01]\d|2[0-3]):([0-5]\d)$""")
-    private val DATE_REGEX = Regex("""^\d{4}-\d{2}-\d{2}$""")
 
     fun parseMinutes(time: String): Int? =
         if (!TIME_REGEX.matches(time)) null
         else time.split(":").let { it[0].toInt() * 60 + it[1].toInt() }
 
-    fun isValidDate(date: String) = DATE_REGEX.matches(date)
+    fun isValidDate(date: String): Boolean =
+        runCatching { LocalDate.parse(date) }.isSuccess
 
     fun validateAdjustment(a: ScheduleAdjustment) = when {
         !isValidDate(a.startDate) -> ScheduleValidationResult.fail("调休起始日期非法：${a.startDate}")
@@ -157,18 +158,49 @@ object ScheduleValidator {
         return ScheduleValidationResult.OK
     }
 
+    fun findConflict(
+        events: List<ScheduleEvent>,
+        startTime: String,
+        endTime: String,
+        weekdays: Set<Weekday>,
+        selfIds: Set<String> = emptySet()
+    ): ScheduleValidationResult {
+        val newStart = parseMinutes(startTime)
+            ?: return ScheduleValidationResult.fail("开始时间非法：$startTime")
+        val newEnd = parseMinutes(endTime)
+            ?: return ScheduleValidationResult.fail("结束时间非法：$endTime")
+        if (newEnd <= newStart) {
+            return ScheduleValidationResult.fail("结束时间需晚于开始时间")
+        }
+        if (weekdays.isEmpty()) {
+            return ScheduleValidationResult.fail("事件未指定任何星期")
+        }
+
+        for (other in events) {
+            if (!other.enabled || other.id in selfIds) continue
+            if (weekdays.intersect(other.weekdays).isEmpty()) continue
+
+            val otherStart = parseMinutes(other.startTime) ?: continue
+            val otherEnd = parseMinutes(other.endTime) ?: continue
+            if (newStart < otherEnd && otherStart < newEnd) {
+                return ScheduleValidationResult.fail(
+                    "与已有事件冲突：${other.startTime}-${other.endTime}"
+                )
+            }
+        }
+
+        return ScheduleValidationResult.OK
+    }
+
     fun findConflict(events: List<ScheduleEvent>, candidate: ScheduleEvent): ScheduleValidationResult {
         validateEvent(candidate).let { if (!it.valid) return it }
-        val ns = parseMinutes(candidate.startTime)!!
-        val ne = parseMinutes(candidate.endTime)!!
-        for (o in events) {
-            if (!o.enabled || o.id == candidate.id) continue
-            if (candidate.weekdays.intersect(o.weekdays).isEmpty()) continue
-            val os = parseMinutes(o.startTime) ?: continue
-            val oe = parseMinutes(o.endTime) ?: continue
-            if (ns < oe && os < ne) return ScheduleValidationResult.fail("与已有事件冲突：${o.startTime}-${o.endTime}")
-        }
-        return ScheduleValidationResult.OK
+        return findConflict(
+            events = events,
+            startTime = candidate.startTime,
+            endTime = candidate.endTime,
+            weekdays = candidate.weekdays,
+            selfIds = setOf(candidate.id)
+        )
     }
 
     fun findAdjustmentConflict(adjustments: List<ScheduleAdjustment>, candidate: ScheduleAdjustment): ScheduleValidationResult {
@@ -202,13 +234,10 @@ class ScheduleDataStore(private val context: Context) {
 
     val scheduleFlow: Flow<Schedule> = activeTableFlow.map { it?.schedule ?: Schedule() }
 
-    suspend fun getTableCollection(): ScheduleTableCollection {
-        var r = ScheduleTableCollection()
-        dataStore.edit { p ->
-            p[tablesKey]?.let { r = runCatching { json.decodeFromString<ScheduleTableCollection>(it) }.getOrElse { ScheduleTableCollection() } }
-        }
-        return r
-    }
+    suspend fun getTableCollection(): ScheduleTableCollection =
+        dataStore.data.first()[tablesKey]
+            ?.let { runCatching { json.decodeFromString<ScheduleTableCollection>(it) }.getOrNull() }
+            ?: ScheduleTableCollection()
 
     suspend fun getActiveTable(): ScheduleTable? {
         val c = getTableCollection()
@@ -219,7 +248,11 @@ class ScheduleDataStore(private val context: Context) {
     suspend fun getSchedule(): Schedule = getActiveTable()?.schedule ?: Schedule()
 
     suspend fun getEventsByWeekday(weekday: Weekday): List<ScheduleEvent> =
-        getSchedule().events.filter { it.enabled && weekday in it.weekdays }.sortedBy { it.startTime }
+        getSchedule().events
+            .asSequence()
+            .filter { it.enabled && weekday in it.weekdays }
+            .sortedBy { ScheduleValidator.parseMinutes(it.startTime) ?: Int.MAX_VALUE }
+            .toList()
 
     suspend fun getEvent(id: String): ScheduleEvent? = getSchedule().events.firstOrNull { it.id == id }
 
@@ -232,13 +265,15 @@ class ScheduleDataStore(private val context: Context) {
         val updated = block(table.schedule)
         ScheduleValidator.validateSchedule(updated).let { if (!it.valid) return it }
         val c = getTableCollection()
-        saveCollection(c.copy(tables = c.tables.map { if (it.id == table.id) it.copy(schedule = updated) else it }))
+        val tableIndex = c.tables.indexOfFirst { it.id == table.id }
+        if (tableIndex < 0) return ScheduleValidationResult.fail("日程表不存在")
+        val tables = c.tables.toMutableList()
+        tables[tableIndex] = tables[tableIndex].copy(schedule = updated)
+        saveCollection(c.copy(tables = tables))
         return ScheduleValidationResult.OK
     }
 
     suspend fun setSchedule(schedule: Schedule) = mutateActive { schedule }
-
-    suspend fun setScheduleUnsafe(schedule: Schedule) { mutateActive { schedule } }
 
     suspend fun updateTableSchedule(tableId: String, schedule: Schedule): ScheduleValidationResult {
         ScheduleValidator.validateSchedule(schedule).let { if (!it.valid) return it }
@@ -281,9 +316,19 @@ class ScheduleDataStore(private val context: Context) {
 
     suspend fun removeTable(tableId: String): ScheduleValidationResult {
         val c = getTableCollection()
+        if (c.tables.none { it.id == tableId }) {
+            return ScheduleValidationResult.fail("日程表不存在")
+        }
+        if (c.tables.size == 1) {
+            return ScheduleValidationResult.fail("至少需要保留一个日程表")
+        }
+        val remaining = c.tables.filterNot { it.id == tableId }
+        val activeId = c.activeTableId
+            ?.takeIf { it != tableId && remaining.any { table -> table.id == it } }
+            ?: remaining.first().id
         saveCollection(c.copy(
-            tables = c.tables.filterNot { it.id == tableId },
-            activeTableId = if (c.activeTableId == tableId) c.tables.firstOrNull { it.id != tableId }?.id else c.activeTableId
+            tables = remaining,
+            activeTableId = activeId
         ))
         return ScheduleValidationResult.OK
     }
