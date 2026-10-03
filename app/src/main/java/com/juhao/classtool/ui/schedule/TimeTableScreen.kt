@@ -365,7 +365,7 @@ private fun EventListCard(
                 imageVector = when (event.type) {
                     ScheduleEventType.BREAK -> MaterialSymbols.Rounded.Accessibility
                     ScheduleEventType.CLASS -> MaterialSymbols.Rounded.School
-                    ScheduleEventType.ACTIVITY -> MaterialSymbols.Rounded.Flag_circle
+                    ScheduleEventType.ACTIVITY -> MaterialSymbols.Rounded.Flag
                 },
                 contentDescription = null,
                 tint = dotColor,
