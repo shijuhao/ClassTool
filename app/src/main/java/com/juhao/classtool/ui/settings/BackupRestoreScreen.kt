@@ -25,10 +25,10 @@ import com.juhao.classtool.datastore.Schedule
 import com.juhao.classtool.datastore.ScheduleDataStore
 import com.juhao.classtool.datastore.ScheduleTable
 import com.juhao.classtool.datastore.ScheduleTableCollection
-import com.juhao.classtool.datastore.ScheduleValidator
 import com.juhao.classtool.datastore.scheduleDataStore
 import com.juhao.classtool.ui.components.RoundToast
 import com.juhao.classtool.utils.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -48,6 +48,14 @@ private val backupJson = Json {
 
 private val scheduleKey = stringPreferencesKey("schedule")
 private val tablesKey = stringPreferencesKey("schedule_tables")
+
+private fun legacyToCollection(scheduleRaw: String): ScheduleTableCollection? =
+    runCatching { backupJson.decodeFromString(Schedule.serializer(), scheduleRaw) }
+        .getOrNull()
+        ?.let { legacy ->
+            val t = ScheduleTable(name = "默认日程表", schedule = legacy)
+            ScheduleTableCollection(tables = listOf(t), activeTableId = t.id)
+        }
 
 @Composable
 fun BackupRestoreScreen() {
@@ -69,59 +77,37 @@ fun BackupRestoreScreen() {
     }
 
     suspend fun readRawPreferences(): Pair<String?, String?> {
-        var tablesRaw: String? = null
-        var scheduleRaw: String? = null
-        context.scheduleDataStore.edit { preferences ->
-            tablesRaw = preferences[tablesKey]
-            scheduleRaw = preferences[scheduleKey]
-        }
-        return tablesRaw to scheduleRaw
+        val prefs = context.scheduleDataStore.data.first()
+        return prefs[tablesKey] to prefs[scheduleKey]
     }
 
     suspend fun refreshStatus() {
         val (tablesRaw, scheduleRaw) = readRawPreferences()
         legacyDetected = tablesRaw == null && scheduleRaw != null
-        val collection = if (tablesRaw != null) {
-            runCatching {
+        tableCount = when {
+            tablesRaw != null -> runCatching {
                 backupJson.decodeFromString(ScheduleTableCollection.serializer(), tablesRaw)
-            }.getOrNull()
-        } else if (scheduleRaw != null) {
-            val legacy = runCatching {
-                backupJson.decodeFromString(Schedule.serializer(), scheduleRaw)
-            }.getOrNull()
-            if (legacy != null) {
-                val t = ScheduleTable(name = "默认日程表", schedule = legacy)
-                ScheduleTableCollection(tables = listOf(t), activeTableId = t.id)
-            } else null
-        } else null
-        tableCount = collection?.tables?.size ?: 0
+            }.getOrNull()?.tables?.size ?: 0
+            scheduleRaw != null -> legacyToCollection(scheduleRaw)?.tables?.size ?: 0
+            else -> 0
+        }
     }
 
     suspend fun generateBackup() {
         val (tablesRaw, scheduleRaw) = readRawPreferences()
-        val tablesJson = if (tablesRaw != null) {
-            tablesRaw
-        } else if (scheduleRaw != null) {
-            val legacy = runCatching {
-                backupJson.decodeFromString(Schedule.serializer(), scheduleRaw)
-            }.getOrNull()
-            if (legacy != null) {
-                val t = ScheduleTable(name = "默认日程表", schedule = legacy)
-                val c = ScheduleTableCollection(tables = listOf(t), activeTableId = t.id)
-                backupJson.encodeToString(ScheduleTableCollection.serializer(), c)
-            } else ""
-        } else ""
-
-        val scheduleJson = scheduleRaw ?: backupJson.encodeToString(
-            Schedule.serializer(),
-            scheduleStore.getSchedule()
+        val tablesJson = tablesRaw
+            ?: scheduleRaw?.let {
+                legacyToCollection(it)?.let { c ->
+                    backupJson.encodeToString(ScheduleTableCollection.serializer(), c)
+                }
+            }
+            ?: ""
+        val scheduleJson = scheduleRaw
+            ?: backupJson.encodeToString(Schedule.serializer(), scheduleStore.getSchedule())
+        backupText = backupJson.encodeToString(
+            BackupPayload.serializer(),
+            BackupPayload(schedule = scheduleJson, tables = tablesJson)
         )
-
-        val payload = BackupPayload(
-            schedule = scheduleJson,
-            tables = tablesJson
-        )
-        backupText = backupJson.encodeToString(BackupPayload.serializer(), payload)
         refreshStatus()
     }
 
@@ -148,40 +134,28 @@ fun BackupRestoreScreen() {
 
     fun doMigrate() {
         scope.launch {
-            var legacyRaw: String? = null
-            context.scheduleDataStore.edit { preferences ->
-                legacyRaw = preferences[scheduleKey]
-            }
-            val raw = legacyRaw
-            if (raw == null) {
+            val (tablesRaw, scheduleRaw) = readRawPreferences()
+            if (scheduleRaw == null) {
                 toast("未检测到旧版数据")
                 refreshStatus()
                 return@launch
             }
-            val legacy = runCatching {
-                backupJson.decodeFromString(Schedule.serializer(), raw)
-            }.getOrNull()
+            if (tablesRaw != null) {
+                toast("当前已是新结构")
+                refreshStatus()
+                return@launch
+            }
+            val legacy = legacyToCollection(scheduleRaw)
             if (legacy == null) {
                 toast("旧版数据解析失败")
                 return@launch
             }
-            val validation = ScheduleValidator.validateSchedule(legacy)
-            if (!validation.valid) {
-                toast("旧版数据校验失败：${validation.reason}")
+            val result = scheduleStore.restoreTableCollection(legacy)
+            if (!result.valid) {
+                toast("迁移失败：${result.reason}")
                 return@launch
             }
-            val table = ScheduleTable(name = "默认日程表", schedule = legacy)
-            val collection = ScheduleTableCollection(
-                tables = listOf(table),
-                activeTableId = table.id
-            )
-            context.scheduleDataStore.edit { preferences ->
-                preferences[tablesKey] = backupJson.encodeToString(
-                    ScheduleTableCollection.serializer(),
-                    collection
-                )
-                preferences.remove(scheduleKey)
-            }
+            context.scheduleDataStore.edit { it.remove(scheduleKey) }
             toast("迁移完成")
             generateBackup()
         }
@@ -200,72 +174,43 @@ fun BackupRestoreScreen() {
             return
         }
 
-        val tablesToRestore: ScheduleTableCollection? = if (payload.tables.isNotBlank()) {
+        val tablesToRestore = payload.tables.takeIf { it.isNotBlank() }?.let { raw ->
             runCatching {
-                backupJson.decodeFromString(ScheduleTableCollection.serializer(), payload.tables)
+                backupJson.decodeFromString(ScheduleTableCollection.serializer(), raw)
             }.getOrElse {
                 toast("日程表集合解析失败")
                 return
             }
-        } else {
-            null
         }
 
-        val scheduleToRestore: Schedule? = if (payload.schedule.isNotBlank()) {
+        val scheduleToRestore = payload.schedule.takeIf { it.isNotBlank() }?.let { raw ->
             runCatching {
-                backupJson.decodeFromString(Schedule.serializer(), payload.schedule)
+                backupJson.decodeFromString(Schedule.serializer(), raw)
             }.getOrElse {
                 toast("日程解析失败")
                 return
             }
-        } else {
-            null
         }
 
-        if (tablesToRestore != null) {
-            for (table in tablesToRestore.tables) {
-                val validation = ScheduleValidator.validateSchedule(table.schedule)
-                if (!validation.valid) {
-                    toast("日程表「${table.name}」校验失败：${validation.reason}")
-                    return
-                }
+        val toWrite = when {
+            tablesToRestore?.tables?.isNotEmpty() == true -> tablesToRestore
+            scheduleToRestore != null -> {
+                val t = ScheduleTable(name = "默认日程表", schedule = scheduleToRestore)
+                ScheduleTableCollection(tables = listOf(t), activeTableId = t.id)
             }
-        } else if (scheduleToRestore != null) {
-            val validation = ScheduleValidator.validateSchedule(scheduleToRestore)
-            if (!validation.valid) {
-                toast("日程校验失败：${validation.reason}")
+            else -> {
+                toast("没有可还原的内容")
                 return
             }
         }
 
         scope.launch {
-            val toWrite: ScheduleTableCollection? = when {
-                tablesToRestore != null && tablesToRestore.tables.isNotEmpty() -> tablesToRestore
-                scheduleToRestore != null -> {
-                    val t = ScheduleTable(name = "默认日程表", schedule = scheduleToRestore)
-                    ScheduleTableCollection(tables = listOf(t), activeTableId = t.id)
-                }
-                else -> null
-            }
-
-            if (toWrite == null) {
-                toast("没有可还原的内容")
+            val result = scheduleStore.restoreTableCollection(toWrite)
+            if (!result.valid) {
+                toast("还原失败：${result.reason}")
                 return@launch
             }
-
-            val normalized = toWrite.copy(
-                activeTableId = toWrite.activeTableId?.takeIf { id ->
-                    toWrite.tables.any { it.id == id }
-                } ?: toWrite.tables.first().id
-            )
-
-            context.scheduleDataStore.edit { preferences ->
-                preferences[tablesKey] = backupJson.encodeToString(
-                    ScheduleTableCollection.serializer(),
-                    normalized
-                )
-                preferences.remove(scheduleKey)
-            }
+            context.scheduleDataStore.edit { it.remove(scheduleKey) }
             toast("还原成功")
             generateBackup()
         }
@@ -286,6 +231,22 @@ fun BackupRestoreScreen() {
                         ),
                     transformation = SurfaceTransformation(transformationSpec)
                 ) { Text(text = "备份与还原") }
+            }
+
+            if (legacyDetected) {
+                item {
+                    TitleCard(
+                        onClick = { },
+                        title = { Text("请尽快迁移旧版数据") },
+                        subtitle = { Text("未来会移除迁移功能") },
+                        transformation = SurfaceTransformation(transformationSpec),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec)
+                    ) {
+                        Text("请在下方点击「迁移旧版数据」完成升级")
+                    }
+                }
             }
 
             item {

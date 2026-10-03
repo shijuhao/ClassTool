@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -354,19 +355,28 @@ private fun EventListCard(
         onClick = onClick,
         onLongClick = onLongClick,
         transformation = transformation,
+        colors = ButtonDefaults.buttonColors().copy(
+            containerColor = lerp(MaterialTheme.colorScheme.background, dotColor, 0.2f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            secondaryContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        icon = {
+            Icon(
+                imageVector = when (event.type) {
+                    ScheduleEventType.BREAK -> MaterialSymbols.Rounded.Accessibility
+                    ScheduleEventType.CLASS -> MaterialSymbols.Rounded.School
+                    ScheduleEventType.ACTIVITY -> MaterialSymbols.Rounded.Flag_circle
+                },
+                contentDescription = null,
+                tint = dotColor,
+                modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
+        },
         label = { Text(displayName) },
         secondaryLabel = {
             val time = "${event.startTime} - ${event.endTime}"
             val suffix = "  ${weekdayScopeLabel(event.weekdays)}"
             Text("$time$suffix")
-        },
-        icon = {
-            Box(
-                Modifier
-                    .size(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(dotColor)
-            )
         },
         modifier = modifier
             .fillMaxWidth()

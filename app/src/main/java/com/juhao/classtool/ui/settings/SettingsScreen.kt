@@ -80,15 +80,15 @@ fun SettingsScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
-
+            
             item {
                 FilledTonalButton(
-                    onClick = { onChangePage(AdjustmentNavScreen) },
-                    label = { Text("调休") },
-                    secondaryLabel = { Text("互换两天的时间表") },
+                    onClick = { onChangePage(ScheduleTableNavScreen) },
+                    label = { Text("日程表管理") },
+                    secondaryLabel = { Text("切换 / 新建多个日程表") },
                     icon = {
                         Icon(
-                            imageVector = MaterialSymbols.Rounded.Swap_horiz,
+                            imageVector = MaterialSymbols.Rounded.Calendar_month,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )
@@ -102,12 +102,12 @@ fun SettingsScreen(
 
             item {
                 FilledTonalButton(
-                    onClick = { onChangePage(ScheduleTableNavScreen) },
-                    label = { Text("日程表管理") },
-                    secondaryLabel = { Text("切换 / 新建多个日程表") },
+                    onClick = { onChangePage(AdjustmentNavScreen) },
+                    label = { Text("调休") },
+                    secondaryLabel = { Text("互换两天的时间表") },
                     icon = {
                         Icon(
-                            imageVector = MaterialSymbols.Rounded.Calendar_month,
+                            imageVector = MaterialSymbols.Rounded.Swap_horiz,
                             contentDescription = null,
                             modifier = Modifier.size(ButtonDefaults.IconSize)
                         )

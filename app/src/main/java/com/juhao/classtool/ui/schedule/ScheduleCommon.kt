@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -212,7 +213,6 @@ fun ProgressFillCard(
     progress: Float = 0f,
     progressLabel: String? = null,
     progressColor: Color = MaterialTheme.colorScheme.primary,
-    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
     isEnded: Boolean = false,
     onClick: () -> Unit = {}
@@ -233,7 +233,7 @@ fun ProgressFillCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .background(trackColor)
+                .background(lerp(MaterialTheme.colorScheme.background, progressColor, 0.2f))
         ) {
             Box(
                 modifier = Modifier
@@ -348,28 +348,14 @@ fun WearTimePicker(
     onConfirm: (String) -> Unit,
     onCancel: () -> Unit
 ) {
-    val parts = initial.split(":")
+    val hour = initial.substringBefore(":").toIntOrNull() ?: 8
+    val minute = initial.substringAfter(":", "").toIntOrNull() ?: 0
 
-    val hour =
-        parts.getOrNull(0)?.toIntOrNull() ?: 8
-
-    val minute =
-        parts.getOrNull(1)?.toIntOrNull() ?: 0
-
-    BackHandler {
-        onCancel()
-    }
+    BackHandler { onCancel() }
 
     TimePicker(
         initialTime = LocalTime.of(hour, minute),
-        onTimePicked = { time ->
-            onConfirm(
-                "%02d:%02d".format(
-                    time.hour,
-                    time.minute
-                )
-            )
-        },
+        onTimePicked = { onConfirm("%02d:%02d".format(it.hour, it.minute)) },
         timePickerType = TimePickerType.HoursMinutes24H
     )
 }

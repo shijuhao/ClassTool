@@ -34,12 +34,13 @@ class CountdownDataStore(private val context: Context) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val dataKey = stringPreferencesKey("countdown_data")
 
-    private val dataFlow: Flow<CountdownData> = context.countdownDataStore.data.map { prefs ->
-        prefs[dataKey]?.let { raw ->
-            runCatching { json.decodeFromString<CountdownData>(raw) }
-                .getOrDefault(CountdownData())
-        } ?: CountdownData()
-    }
+    private fun Preferences.decode(): CountdownData =
+        this[dataKey]
+            ?.let { runCatching { json.decodeFromString<CountdownData>(it) }.getOrNull() }
+            ?: CountdownData()
+
+    private val dataFlow: Flow<CountdownData> =
+        context.countdownDataStore.data.map { it.decode() }
 
     val daysFlow: Flow<List<CountdownDay>> = dataFlow.map { it.days }
 
@@ -47,29 +48,18 @@ class CountdownDataStore(private val context: Context) {
 
     suspend fun getDay(id: Long): CountdownDay? = getDays().firstOrNull { it.id == id }
 
-    suspend fun upsert(day: CountdownDay) {
-        context.countdownDataStore.edit { prefs ->
-            val current = prefs[dataKey]?.let { raw ->
-                runCatching { json.decodeFromString<CountdownData>(raw) }
-                    .getOrDefault(CountdownData())
-            } ?: CountdownData()
-
-            val updated = current.days.toMutableList().apply {
-                val idx = indexOfFirst { it.id == day.id }
-                if (idx >= 0) set(idx, day) else add(day)
-            }
-            prefs[dataKey] = json.encodeToString(CountdownData(updated))
+    suspend fun upsert(day: CountdownDay) = mutate { days ->
+        days.toMutableList().apply {
+            val idx = indexOfFirst { it.id == day.id }
+            if (idx >= 0) set(idx, day) else add(day)
         }
     }
 
-    suspend fun delete(id: Long) {
+    suspend fun delete(id: Long) = mutate { days -> days.filterNot { it.id == id } }
+
+    private suspend fun mutate(block: (List<CountdownDay>) -> List<CountdownDay>) {
         context.countdownDataStore.edit { prefs ->
-            val current = prefs[dataKey]?.let { raw ->
-                runCatching { json.decodeFromString<CountdownData>(raw) }
-                    .getOrDefault(CountdownData())
-            } ?: CountdownData()
-            val updated = current.days.filterNot { it.id == id }
-            prefs[dataKey] = json.encodeToString(CountdownData(updated))
+            prefs[dataKey] = json.encodeToString(CountdownData(block(prefs.decode().days)))
         }
     }
 }

@@ -228,21 +228,6 @@ fun WearApp() {
         context = context
     )
 
-    val currentEventColor = dynamicThemeState.color
-    val currentEventUrgent = dynamicThemeState.urgent
-
-    val themeEventColor = if (dynamicThemeEnabled) {
-        currentEventColor
-    } else {
-        null
-    }
-
-    val themeEventUrgent = if (dynamicThemeEnabled) {
-        currentEventUrgent
-    } else {
-        false
-    }
-
     val scheduleStore = remember {
         ScheduleDataStore(context)
     }
@@ -262,13 +247,11 @@ fun WearApp() {
                 }
 
                 scope.launch {
-                    val globalReminderEnabled =
-                        settingsDataStore.getGlobalEventReminder()
+                    if (!settingsDataStore.getGlobalEventReminder()) {
+                        return@launch
+                    }
 
-                    val onHomePage =
-                        backStack.lastOrNull() is MenuScreen
-
-                    if (!globalReminderEnabled || onHomePage) {
+                    if (backStack.lastOrNull() is MenuScreen) {
                         return@launch
                     }
 
@@ -277,24 +260,21 @@ fun WearApp() {
 
                     val todayDate = todayDateString()
 
-                    val schedule = scheduleStore.getSchedule()
-
-                    val events = schedule.events
-                    val adjustments = schedule.adjustments
+                    val (events, adjustments) =
+                        scheduleStore.getSchedule()
 
                     val displayWeekday = effectiveWeekdayOnDate(
                         todayDate,
                         adjustments
                     ) ?: todayWeekday()
 
-                    val prepEnabled =
-                        settingsDataStore.getPrepBell()
-
-                    eventsOnDate(
+                    val todayEvents = eventsOnDate(
                         events,
                         adjustments,
                         todayDate
                     )
+
+                    todayEvents
                         .firstOrNull {
                             toMinutes(it.startTime) == nowMinutes
                         }
@@ -309,12 +289,8 @@ fun WearApp() {
                             )
                         }
 
-                    if (prepEnabled) {
-                        eventsOnDate(
-                            events,
-                            adjustments,
-                            todayDate
-                        )
+                    if (settingsDataStore.getPrepBell()) {
+                        todayEvents
                             .firstOrNull { event ->
                                 if (event.type == ScheduleEventType.BREAK) {
                                     return@firstOrNull false
@@ -348,24 +324,22 @@ fun WearApp() {
     }
 
     LaunchedEffect(Unit) {
-        val countdownStore = CountdownDataStore(context)
-
-        val upcoming = countdownStore.getDays()
+        val nearest = CountdownDataStore(context)
+            .getDays()
             .map { it to daysUntil(it.dateMillis) }
             .filter { (_, d) -> d in 0..5 }
-            .sortedBy { (_, d) -> d }
+            .minByOrNull { (_, d) -> d }
+            ?: return@LaunchedEffect
 
-        if (upcoming.isNotEmpty()) {
-            val (nearest, remain) = upcoming.first()
+        val (item, remain) = nearest
 
-            val text = when (remain) {
-                0L -> "「${nearest.title}」就是今天"
-                1L -> "「${nearest.title}」明天到来"
-                else -> "「${nearest.title}」还有 $remain 天"
-            }
-
-            showMessage(text)
+        val text = when (remain) {
+            0L -> "「${item.title}」就是今天"
+            1L -> "「${item.title}」明天到来"
+            else -> "「${item.title}」还有 $remain 天"
         }
+
+        showMessage(text)
     }
 
     val entryProvider = remember {
@@ -427,8 +401,8 @@ fun WearApp() {
         useSystemColor = useSystemColor,
         theme = appTheme,
         customColor = customColor,
-        eventColor = themeEventColor,
-        eventUrgent = themeEventUrgent
+        eventColor = dynamicThemeState.color,
+        eventUrgent = dynamicThemeState.urgent
     ) {
         CompositionLocalProvider(
             LocalScreenShape provides screenShape

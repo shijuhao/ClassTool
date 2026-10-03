@@ -54,11 +54,7 @@ fun parseColor(hex: String): Color = runCatching {
     Color(hex.toColorInt())
 }.getOrElse { Color.DarkGray }
 
-fun contrastColorFor(hex: String): Color {
-    val c = parseColor(hex)
-    val luminance = 0.299f * c.red + 0.587f * c.green + 0.114f * c.blue
-    return if (luminance > 0.6f) Color.Black else Color.White
-}
+fun contrastColorFor(hex: String): Color = contrastColorForColor(parseColor(hex))
 
 fun contrastColorForColor(color: Color): Color {
     val luminance = 0.299f * color.red + 0.587f * color.green + 0.114f * color.blue
@@ -89,49 +85,28 @@ fun currentSecondOfDay(): Int {
     return now.hour * 3600 + now.minute * 60 + now.second
 }
 
-fun todayWeekday(): Weekday = when (LocalDate.now().dayOfWeek.value) {
-    1 -> Weekday.MONDAY
-    2 -> Weekday.TUESDAY
-    3 -> Weekday.WEDNESDAY
-    4 -> Weekday.THURSDAY
-    5 -> Weekday.FRIDAY
-    6 -> Weekday.SATURDAY
-    else -> Weekday.SUNDAY
-}
+fun dateStringToWeekday(date: String): Weekday? = runCatching {
+    Weekday.entries[LocalDate.parse(date).dayOfWeek.value - 1]
+}.getOrNull()
+
+fun todayWeekday(): Weekday =
+    dateStringToWeekday(todayDateString()) ?: Weekday.MONDAY
 
 fun todayDateString(): String = LocalDate.now().toString()
 
-fun dateStringToWeekday(date: String): Weekday? {
-    return runCatching {
-        when (LocalDate.parse(date).dayOfWeek.value) {
-            1 -> Weekday.MONDAY
-            2 -> Weekday.TUESDAY
-            3 -> Weekday.WEDNESDAY
-            4 -> Weekday.THURSDAY
-            5 -> Weekday.FRIDAY
-            6 -> Weekday.SATURDAY
-            else -> Weekday.SUNDAY
-        }
-    }.getOrNull()
-}
-
-fun formatDateLabel(date: String): String {
-    return runCatching {
-        val d = LocalDate.parse(date)
-        "${d.monthValue}月${d.dayOfMonth}日"
-    }.getOrElse { date }
-}
+fun formatDateLabel(date: String): String = runCatching {
+    val d = LocalDate.parse(date)
+    "${d.monthValue}月${d.dayOfMonth}日"
+}.getOrElse { date }
 
 fun formatDateWithWeekday(date: String): String {
     val w = dateStringToWeekday(date) ?: return formatDateLabel(date)
     return "${formatDateLabel(date)} ${weekdayLabel(w)}"
 }
 
-fun addDays(date: String, days: Int): String {
-    return runCatching {
-        LocalDate.parse(date).plusDays(days.toLong()).toString()
-    }.getOrElse { date }
-}
+fun addDays(date: String, days: Int): String = runCatching {
+    LocalDate.parse(date).plusDays(days.toLong()).toString()
+}.getOrElse { date }
 
 fun effectiveWeekdayOnDate(
     date: String,
@@ -149,34 +124,17 @@ fun effectiveWeekdayOnDate(
     }
 }
 
-fun isEventActiveOnDate(event: ScheduleEvent, date: String): Boolean {
-    if (!event.enabled) return false
-    if (event.transfers.any { it.fromDate == date }) return false
-    val weekday = dateStringToWeekday(date) ?: return false
-    return weekday in event.weekdays
-}
-
-fun isEventTransferredInOnDate(event: ScheduleEvent, date: String): Boolean {
-    return event.transfers.any { it.toDate == date }
-}
-
 fun effectiveEventOnDate(event: ScheduleEvent, date: String): ScheduleEvent? {
     if (!event.enabled) return null
 
-    val incoming = event.transfers.firstOrNull { it.toDate == date }
-    if (incoming != null) {
-        return event.copy(
-            startTime = incoming.toStartTime,
-            endTime = incoming.toEndTime
-        )
+    event.transfers.firstOrNull { it.toDate == date }?.let {
+        return event.copy(startTime = it.toStartTime, endTime = it.toEndTime)
     }
 
     if (event.transfers.any { it.fromDate == date }) return null
 
     val weekday = dateStringToWeekday(date) ?: return null
-    if (weekday !in event.weekdays) return null
-
-    return event
+    return if (weekday in event.weekdays) event else null
 }
 
 fun eventsOnDate(
@@ -184,51 +142,17 @@ fun eventsOnDate(
     adjustments: List<ScheduleAdjustment>,
     date: String
 ): List<ScheduleEvent> {
-    val effectiveWeekday = effectiveWeekdayOnDate(date, adjustments)
-        ?: return emptyList()
-
-    val result = mutableListOf<ScheduleEvent>()
-
-    for (event in events) {
-        if (!event.enabled) continue
-        if (event.transfers.any { it.fromDate == date }) continue
-
-        val incoming = event.transfers.firstOrNull { it.toDate == date }
-
-        if (incoming != null) {
-            result.add(
-                event.copy(
-                    startTime = incoming.toStartTime,
-                    endTime = incoming.toEndTime
-                )
-            )
-            continue
+    val effectiveWeekday = effectiveWeekdayOnDate(date, adjustments) ?: return emptyList()
+    return events
+        .filter { it.enabled }
+        .mapNotNull { event ->
+            event.transfers.firstOrNull { it.toDate == date }?.let {
+                return@mapNotNull event.copy(startTime = it.toStartTime, endTime = it.toEndTime)
+            }
+            if (event.transfers.any { it.fromDate == date }) return@mapNotNull null
+            if (effectiveWeekday in event.weekdays) event else null
         }
-
-        if (effectiveWeekday in event.weekdays) {
-            result.add(event)
-        }
-    }
-
-    return result.sortedBy {
-        toMinutes(it.startTime) ?: Int.MAX_VALUE
-    }
-}
-
-fun upcomingEventsForDate(
-    events: List<ScheduleEvent>,
-    adjustments: List<ScheduleAdjustment>,
-    date: String,
-    nowMinutes: Int
-): List<ScheduleEvent> {
-    return eventsOnDate(events, adjustments, date)
-        .filter { it.type != ScheduleEventType.BREAK }
-        .filter {
-            (toMinutes(it.startTime) ?: Int.MAX_VALUE) > nowMinutes
-        }
-        .sortedBy {
-            toMinutes(it.startTime) ?: Int.MAX_VALUE
-        }
+        .sortedBy { toMinutes(it.startTime) ?: Int.MAX_VALUE }
 }
 
 fun findCurrentEventOnDate(
@@ -236,10 +160,8 @@ fun findCurrentEventOnDate(
     adjustments: List<ScheduleAdjustment>,
     date: String,
     nowMinutes: Int
-): ScheduleEvent? {
-    return eventsOnDate(events, adjustments, date).firstOrNull { e ->
-        val s = toMinutes(e.startTime) ?: return@firstOrNull false
-        val t = toMinutes(e.endTime) ?: return@firstOrNull false
-        nowMinutes in s until t
-    }
+): ScheduleEvent? = eventsOnDate(events, adjustments, date).firstOrNull { e ->
+    val s = toMinutes(e.startTime) ?: return@firstOrNull false
+    val t = toMinutes(e.endTime) ?: return@firstOrNull false
+    nowMinutes in s until t
 }
