@@ -2,25 +2,16 @@ package com.juhao.classtool.ui.schedule
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
@@ -67,141 +58,6 @@ fun weekdayScopeLabel(days: Set<Weekday>): String = when {
     else -> days
         .sortedBy { it.ordinal }
         .joinToString("") { weekdayShortLabel(it) }
-}
-
-@Composable
-fun CustomPresetDialog(
-    title: String,
-    placeholder: String,
-    initialName: String,
-    initialColor: String?,
-    onDismiss: () -> Unit,
-    onConfirm: (String, String?) -> Unit
-) {
-    var customName by remember { mutableStateOf(initialName) }
-    var customColor by remember { mutableStateOf(initialColor) }
-
-    AlertDialog(
-        visible = true,
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        confirmButton = {
-            AlertDialogDefaults.ConfirmButton(
-                onClick = {
-                    if (customName.isNotBlank()) {
-                        onConfirm(
-                            customName.trim(),
-                            customColor
-                        )
-                    }
-                }
-            )
-        },
-        dismissButton = {
-            AlertDialogDefaults.DismissButton(
-                onClick = onDismiss
-            )
-        }
-    ) {
-        item {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "名称")
-
-                Spacer(
-                    modifier = Modifier.height(4.dp)
-                )
-
-                BasicTextField(
-                    value = customName,
-                    onValueChange = {
-                        customName = it
-                    },
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    cursorBrush = SolidColor(
-                        MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(
-                            horizontal = 12.dp,
-                            vertical = 8.dp
-                        ),
-                    decorationBox = { innerTextField ->
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (customName.isEmpty()) {
-                                Text(
-                                    text = placeholder,
-                                    color = MaterialTheme
-                                        .colorScheme
-                                        .onSurfaceVariant
-                                )
-                            }
-
-                            innerTextField()
-                        }
-                    }
-                )
-            }
-        }
-
-        item {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "颜色")
-
-                Spacer(
-                    modifier = Modifier.height(4.dp)
-                )
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    paletteColors.forEach { hex ->
-                        val selected = customColor == hex
-
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(
-                                    RoundedCornerShape(14.dp)
-                                )
-                                .background(parseColor(hex))
-                                .clickable {
-                                    customColor =
-                                        if (selected) {
-                                            null
-                                        } else {
-                                            hex
-                                        }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selected) {
-                                Icon(
-                                    imageVector =
-                                        MaterialSymbols.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = contrastColorFor(hex),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable

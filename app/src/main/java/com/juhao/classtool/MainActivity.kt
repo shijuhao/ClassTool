@@ -156,6 +156,8 @@ fun WearApp() {
     val backStack = rememberNavBackStack(MenuScreen)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val activitySelection = remember { mutableStateOf<PendingActivitySelection?>(null) }
+    val courseSelection = remember { mutableStateOf<PendingCourseSelection?>(null) }
 
     fun navigateTo(key: NavKey) {
         if (backStack.lastOrNull() != key) {
@@ -354,7 +356,16 @@ fun WearApp() {
                 )
             }
 
-            scheduleEntries()
+            scheduleEntries(
+                onBack = {
+                    backStack.removeLastOrNull()
+                },
+                onNavigate = {
+                    navigateTo(it)
+                },
+                activitySelection = activitySelection,
+                courseSelection = courseSelection
+            )
 
             countdownEntries(
                 onBack = {

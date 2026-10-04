@@ -14,6 +14,41 @@ data object TimeTableNavScreen : AppKey
 @Serializable
 data object CourseTableNavScreen : AppKey
 
+
+@Serializable
+data class AddScheduleEventNavScreen(
+    val draft: com.juhao.classtool.ui.schedule.ScheduleEventDraft
+) : AppKey
+
+@Serializable
+data class EditScheduleEventNavScreen(
+    val draft: com.juhao.classtool.ui.schedule.ScheduleEventDraft
+) : AppKey
+
+@Serializable
+data class CourseEditNavScreen(
+    val draft: com.juhao.classtool.ui.schedule.CourseEditDraft
+) : AppKey
+
+@Serializable
+data class ActivityPresetPickerNavScreen(
+    val draft: com.juhao.classtool.ui.schedule.ScheduleEventDraft
+) : AppKey
+
+@Serializable
+data class CoursePresetPickerNavScreen(
+    val draft: com.juhao.classtool.ui.schedule.CourseEditDraft,
+    val directSave: Boolean = false
+) : AppKey
+
+@Serializable
+data class CustomPresetNavScreen(
+    val target: com.juhao.classtool.ui.schedule.PresetTarget,
+    val initialName: String,
+    val initialColor: String? = null,
+    val directSave: Boolean = false
+) : AppKey
+
 @Serializable
 data object CountdownNavScreen : AppKey
 @Serializable

@@ -10,7 +10,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumnDefaults
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
 import androidx.wear.compose.foundation.pager.HorizontalPager
 import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.*
@@ -199,8 +201,14 @@ private fun CurrentEventPage(
     }
 
     ScreenScaffold(scrollState = scrollState) { contentPadding ->
-        TransformingLazyColumn(state = scrollState, contentPadding = contentPadding) {
-
+        TransformingLazyColumn(
+            state = scrollState,
+            contentPadding = contentPadding,
+            flingBehavior = TransformingLazyColumnDefaults.snapFlingBehavior(state = scrollState),
+            rotaryScrollableBehavior = RotaryScrollableDefaults.snapBehavior(
+                scrollableState = scrollState
+            )
+        ) {
             item {
                 ListHeader(
                     modifier = Modifier
@@ -350,7 +358,10 @@ private fun MenuPage(onChangePage: (AppKey) -> Unit) {
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .transformedHeight(this, transformationSpec),
+                        .transformedHeight(this, transformationSpec)
+                        .minimumVerticalContentPadding(
+                            ButtonDefaults.minimumVerticalListContentPadding
+                        ),
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
