@@ -207,6 +207,12 @@ fun WearApp() {
             initial = true
         )
 
+    val dayMode by settingsDataStore
+        .dayModeFlow
+        .collectAsState(
+            initial = false
+        )
+
     val appTheme by settingsDataStore
         .appThemeFlow
         .collectAsState(
@@ -410,6 +416,7 @@ fun WearApp() {
 
     WearAppTheme(
         useSystemColor = useSystemColor,
+        dayMode = dayMode,
         theme = appTheme,
         customColor = customColor,
         eventColor = dynamicThemeState.color,
@@ -421,7 +428,7 @@ fun WearApp() {
             AppScaffold(
                 modifier = Modifier
                     .then(
-                        if (pureBlackBackground) {
+                        if (pureBlackBackground && !dayMode) {
                             Modifier.background(Color.Black)
                         } else {
                             Modifier

@@ -30,6 +30,7 @@ fun ThemeScreen(
     val transformationSpec = rememberAdaptiveTransformationSpec(square)
 
     val useSystemColor by store.useSystemColorFlow.collectAsState(initial = true)
+    val dayMode by store.dayModeFlow.collectAsState(initial = false)
     val appTheme by store.appThemeFlow.collectAsState(initial = null)
     val dynamicTheme by store.dynamicThemeFlow.collectAsState(initial = true)
     val pureBlackBackground by store.pureBlackBackgroundFlow.collectAsState(initial = false)
@@ -86,13 +87,50 @@ fun ThemeScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
-            
+
+            item {
+                SwitchButton(
+                    checked = dayMode,
+                    onCheckedChange = { checked ->
+                        scope.launch {
+                            store.setDayMode(checked)
+                            if (checked) {
+                                store.setPureBlackBackground(false)
+                            }
+                        }
+                    },
+                    label = {
+                        Text(
+                            text = "日间模式",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    secondaryLabel = {
+                        Text(
+                            text = if (dayMode) "使用浅色背景" else "关闭",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Light_mode,
+                            contentDescription = null
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+
             item {
                 SwitchButton(
                     checked = pureBlackBackground,
                     onCheckedChange = { checked ->
                         scope.launch { store.setPureBlackBackground(checked) }
                     },
+                    enabled = !dayMode,
                     label = {
                         Text(
                             text = "纯黑背景",

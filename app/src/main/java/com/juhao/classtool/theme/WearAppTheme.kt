@@ -10,6 +10,7 @@ import androidx.wear.compose.material3.dynamicColorScheme
 @Composable
 fun WearAppTheme(
     useSystemColor: Boolean = true,
+    dayMode: Boolean = false,
     theme: AppTheme? = null,
     customColor: Color = Color(0xFF9BD7FF),
     eventColor: Color? = null,
@@ -22,23 +23,30 @@ fun WearAppTheme(
     val baseScheme = when {
         useSystemColor && systemScheme != null -> systemScheme
         theme == AppTheme.CUSTOM -> buildCustomColorScheme(
-            base = wearColorScheme,
-            customColor = customColor
+            base = if (dayMode) wearDayColorScheme else wearColorScheme,
+            customColor = customColor,
+            isDay = dayMode
         )
-        theme != null -> buildThemeColorScheme(wearColorScheme, theme)
-        else -> wearColorScheme
+        theme != null -> buildThemeColorScheme(
+            base = if (dayMode) wearDayColorScheme else wearColorScheme,
+            theme = theme,
+            isDay = dayMode
+        )
+        else -> if (dayMode) wearDayColorScheme else wearColorScheme
     }
 
     val finalScheme = when {
         eventUrgent -> buildEventColorScheme(
             base = baseScheme,
             eventColor = eventColor ?: baseScheme.error,
-            eventUrgent = true
+            eventUrgent = true,
+            isDay = dayMode
         )
         eventColor != null -> buildEventColorScheme(
             base = baseScheme,
             eventColor = eventColor,
-            eventUrgent = false
+            eventUrgent = false,
+            isDay = dayMode
         )
         else -> baseScheme
     }
