@@ -8,16 +8,6 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Box
@@ -35,7 +25,6 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import androidx.navigation3.scene.Scene
 import androidx.wear.compose.material3.*
 import com.juhao.classtool.datastore.*
 import com.juhao.classtool.navigation.*
@@ -50,7 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import kotlin.time.Duration.Companion.milliseconds
+import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
 
 class MainActivity : ComponentActivity() {
 
@@ -105,50 +94,6 @@ private fun SquareTimeText() {
                 .padding(horizontal = 10.dp)
         )
     }
-}
-
-private val EaseOut = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-private val EaseIn = CubicBezierEasing(0.4f, 0f, 1f, 1f)
-
-private const val DUR_IN = 200
-private const val DUR_OUT = 160
-private const val FADE_IN = 140
-private const val FADE_OUT = 120
-
-private val navTransitionSpec:
-    AnimatedContentTransitionScope<Scene<NavKey>>.() -> ContentTransform = {
-    slideInHorizontally(
-        initialOffsetX = { it / 6 },
-        animationSpec = tween(DUR_IN, easing = EaseOut)
-    ) + fadeIn(
-        animationSpec = tween(FADE_IN, easing = EaseOut)
-    ) togetherWith slideOutHorizontally(
-        targetOffsetX = { -it / 8 },
-        animationSpec = tween(DUR_OUT, easing = EaseIn)
-    ) + fadeOut(
-        animationSpec = tween(FADE_OUT, easing = EaseIn)
-    )
-}
-
-private val navPopTransitionSpec:
-    AnimatedContentTransitionScope<Scene<NavKey>>.() -> ContentTransform = {
-    fadeIn(
-        animationSpec = tween(180, easing = EaseOut)
-    ) + scaleIn(
-        initialScale = 0.98f,
-        animationSpec = tween(180, easing = EaseOut)
-    ) togetherWith fadeOut(
-        animationSpec = tween(120, easing = EaseIn)
-    )
-}
-
-private val navPredictivePopTransitionSpec:
-    AnimatedContentTransitionScope<Scene<NavKey>>.(Int) -> ContentTransform = { _ ->
-    fadeIn(
-        animationSpec = tween(160, easing = EaseOut)
-    ) togetherWith fadeOut(
-        animationSpec = tween(120, easing = EaseIn)
-    )
 }
 
 @Composable
@@ -414,6 +359,8 @@ fun WearApp() {
         }
     }
 
+    val swipeDismissableSceneStrategy = rememberSwipeDismissableSceneStrategy<NavKey>()
+
     WearAppTheme(
         useSystemColor = useSystemColor,
         dayMode = dayMode,
@@ -446,9 +393,7 @@ fun WearApp() {
                 NavDisplay(
                     backStack = backStack,
                     entryProvider = entryProvider,
-                    transitionSpec = navTransitionSpec,
-                    popTransitionSpec = navPopTransitionSpec,
-                    predictivePopTransitionSpec = navPredictivePopTransitionSpec
+                    sceneStrategies = listOf(swipeDismissableSceneStrategy)
                 )
             }
         }
