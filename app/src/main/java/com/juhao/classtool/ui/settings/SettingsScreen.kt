@@ -120,6 +120,25 @@ fun SettingsScreen(
             }
 
             item {
+                FilledTonalButton(
+                    onClick = { onChangePage(FloatingWindowNavScreen) },
+                    label = { Text("悬浮窗") },
+                    secondaryLabel = { Text("开启 / 关闭悬浮窗，权限设置") },
+                    icon = {
+                        Icon(
+                            imageVector = MaterialSymbols.Rounded.Picture_in_picture,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec)
+                )
+            }
+
+            item {
                 SwitchButton(
                     checked = prepBell,
                     onCheckedChange = { checked ->

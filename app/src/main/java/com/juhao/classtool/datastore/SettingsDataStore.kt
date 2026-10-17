@@ -45,6 +45,7 @@ class SettingsDataStore(private val context: Context) {
     private val customColorKey = longPreferencesKey("custom_color")
     private val pureBlackBackgroundKey = booleanPreferencesKey("pure_black_background")
     private val dayModeKey = booleanPreferencesKey("day_mode")
+    private val floatingWindowEnabledKey = booleanPreferencesKey("floating_window_enabled")
 
     private fun <T> preferenceFlow(key: Preferences.Key<T>, default: T): Flow<T> =
         dataStore.data.map { it[key] ?: default }
@@ -136,4 +137,9 @@ class SettingsDataStore(private val context: Context) {
     val dayModeFlow = preferenceFlow(dayModeKey, false)
     suspend fun getDayMode() = getPreference(dayModeKey, false)
     suspend fun setDayMode(enabled: Boolean) = setPreference(dayModeKey, enabled)
+
+    val floatingWindowEnabledFlow = preferenceFlow(floatingWindowEnabledKey, false)
+    suspend fun getFloatingWindowEnabled() = getPreference(floatingWindowEnabledKey, false)
+    suspend fun setFloatingWindowEnabled(enabled: Boolean) =
+        setPreference(floatingWindowEnabledKey, enabled)
 }

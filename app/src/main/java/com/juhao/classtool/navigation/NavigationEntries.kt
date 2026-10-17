@@ -306,4 +306,7 @@ fun EntryProviderScope<NavKey>.settingsEntries(
     entry<AboutNavScreen> {
         AboutScreen()
     }
+    entry<FloatingWindowNavScreen> {
+        FloatingWindowSettingsScreen()
+    }
 }

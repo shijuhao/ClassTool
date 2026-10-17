@@ -101,3 +101,5 @@ data object BackupRestoreNavScreen : AppKey
 data object ScheduleTableNavScreen : AppKey
 @Serializable
 data object AboutNavScreen : AppKey
+@Serializable
+data object FloatingWindowNavScreen : AppKey

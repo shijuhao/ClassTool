@@ -9,10 +9,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
@@ -21,6 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -30,6 +29,14 @@ import com.juhao.classtool.datastore.*
 import com.juhao.classtool.navigation.*
 import com.juhao.classtool.ui.countdown.*
 import com.juhao.classtool.ui.schedule.*
+import com.juhao.classtool.ui.schedule.eventDisplayNameFor
+import com.juhao.classtool.ui.schedule.findCurrentEventOnDate
+import com.juhao.classtool.ui.schedule.toMinutes
+import com.juhao.classtool.ui.schedule.currentSecondOfDay
+import com.juhao.classtool.ui.schedule.todayDateString
+import com.juhao.classtool.ui.schedule.todayWeekday
+import com.juhao.classtool.ui.schedule.effectiveWeekdayOnDate
+import com.juhao.classtool.ui.schedule.eventsOnDate
 import com.juhao.classtool.ui.main.GreetingScreen
 import com.juhao.classtool.ui.components.RoundToast
 import com.juhao.classtool.theme.WearAppTheme
@@ -40,6 +47,12 @@ import kotlinx.coroutines.runBlocking
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import androidx.wear.compose.navigation3.rememberSwipeDismissableSceneStrategy
+
+import com.petterp.floatingx.core.FloatingX
+import com.petterp.floatingx.core.layout.FxGravity
+import com.petterp.floatingx.core.gesture.FxDrag
+import com.petterp.floatingx.system.systemHost
+import com.petterp.floatingx.compose.compose
 
 class MainActivity : ComponentActivity() {
 
@@ -59,6 +72,25 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val floatingEnabled = runBlocking {
+            SettingsDataStore(applicationContext).getFloatingWindowEnabled()
+        }
+
+        if (floatingEnabled) {
+            val fxControl = FloatingX.install("schedule_window") {
+                systemHost(applicationContext)
+                compose {
+                    FloatingScheduleWindow()
+                }
+                anchor(FxGravity.TOP_CENTER)
+                gesture {
+                    drag = FxDrag.DISABLED
+                    touchable = false
+                }
+            }
+            fxControl.show()
+        }
 
         setContent {
             WearApp()

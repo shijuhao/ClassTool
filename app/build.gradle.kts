@@ -93,9 +93,11 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.kotlinx.serialization.json)
-
     implementation(libs.datastore.preferences)
     implementation(libs.datastore)
+    
+    implementation(libs.floatingx.system)
+    implementation(libs.floatingx.compose)
 
     implementation(libs.androidx.ui.test.manifest)
 
