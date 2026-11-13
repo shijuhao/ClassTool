@@ -400,7 +400,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SliderSettingCard(
+internal fun SliderSettingCard(
     modifier: Modifier = Modifier,
     title: String,
     valueLabel: String,

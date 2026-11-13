@@ -327,6 +327,8 @@ fun WearApp() {
         showMessage(text)
     }
 
+    val statusTimeVisible = remember { mutableStateOf(true) }
+
     val entryProvider = remember {
         entryProvider<NavKey> {
 
@@ -335,6 +337,9 @@ fun WearApp() {
                     isActive = backStack.lastOrNull() is MenuScreen,
                     onChangePage = {
                         navigateTo(it)
+                    },
+                    onStatusTimeVisibleChange = { visible ->
+                        statusTimeVisible.value = visible
                     }
                 )
             }
@@ -415,10 +420,12 @@ fun WearApp() {
                     )
                     .safeDrawingPadding(),
                 timeText = {
-                    if (screenShape == ScreenShape.SQUARE) {
-                        SquareTimeText()
-                    } else {
-                        TimeText()
+                    if (statusTimeVisible.value) {
+                        if (screenShape == ScreenShape.SQUARE) {
+                            SquareTimeText()
+                        } else {
+                            TimeText()
+                        }
                     }
                 }
             ) {

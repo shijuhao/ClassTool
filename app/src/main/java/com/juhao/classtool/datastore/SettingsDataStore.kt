@@ -46,6 +46,7 @@ class SettingsDataStore(private val context: Context) {
     private val pureBlackBackgroundKey = booleanPreferencesKey("pure_black_background")
     private val dayModeKey = booleanPreferencesKey("day_mode")
     private val floatingWindowEnabledKey = booleanPreferencesKey("floating_window_enabled")
+    private val dialCornerRadiusKey = floatPreferencesKey("dial_corner_radius")
 
     private fun <T> preferenceFlow(key: Preferences.Key<T>, default: T): Flow<T> =
         dataStore.data.map { it[key] ?: default }
@@ -142,4 +143,10 @@ class SettingsDataStore(private val context: Context) {
     suspend fun getFloatingWindowEnabled() = getPreference(floatingWindowEnabledKey, false)
     suspend fun setFloatingWindowEnabled(enabled: Boolean) =
         setPreference(floatingWindowEnabledKey, enabled)
+
+    /** 方屏表盘环的圆角（dp），0 = 直角，越大越接近胶囊/圆形。 */
+    val dialCornerRadiusFlow = preferenceFlow(dialCornerRadiusKey, 40f)
+    suspend fun getDialCornerRadius() = getPreference(dialCornerRadiusKey, 40f)
+    suspend fun setDialCornerRadius(radiusDp: Float) =
+        setPreference(dialCornerRadiusKey, radiusDp.coerceIn(0f, 160f))
 }
