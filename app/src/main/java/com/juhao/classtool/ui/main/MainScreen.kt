@@ -22,13 +22,19 @@ import com.composables.icons.materialsymbols.rounded.*
 import com.composables.icons.materialsymbols.roundedfilled.Gamepad
 import com.juhao.classtool.datastore.*
 import com.juhao.classtool.navigation.*
+import com.juhao.classtool.ui.dial.DialScreen
 import com.juhao.classtool.ui.schedule.*
+import com.juhao.classtool.ui.todo.TodoHomePage
 import com.juhao.classtool.utils.*
 import kotlinx.coroutines.delay
 import java.time.LocalDate
 import kotlin.time.Duration.Companion.milliseconds
 
 private data class MenuEntry(val label: String, val icon: ImageVector, val key: AppKey)
+
+/** 表盘页在 pager 里的下标（0 = 当前课程，1 = 表盘，2 = 待办，3 = 更多）。 */
+private const val DIAL_PAGE = 1
+private const val TODO_PAGE = 2
 
 private val menuEntries = listOf(
     MenuEntry("时间表", MaterialSymbols.Rounded.Schedule, TimeTableNavScreen),
@@ -44,17 +50,22 @@ private val menuEntries = listOf(
 @Composable
 fun GreetingScreen(
     isActive: Boolean = true,
-    onChangePage: (AppKey) -> Unit
+    onChangePage: (AppKey) -> Unit,
+    onStatusTimeVisibleChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val store = remember { ScheduleDataStore(context) }
     val settingsStore = remember { SettingsDataStore(context) }
 
     val keepScreenOnSetting by settingsStore.keepScreenOnFlow.collectAsState(initial = false)
+    val dialCornerRadius by settingsStore.dialCornerRadiusFlow.collectAsState(initial = 40f)
 
     val scheduleState by store.scheduleFlow.collectAsState(initial = Schedule())
     val schedule = scheduleState.events
     val adjustments = scheduleState.adjustments
+
+    // 4 页：当前课程 / 表盘 / 待办 / 更多
+    val pagerState = rememberPagerState(pageCount = { 4 })
 
     var prepBellEnabled by remember { mutableStateOf(true) }
     var nowSecondOfDay by remember { mutableIntStateOf(currentSecondOfDay()) }
@@ -62,7 +73,11 @@ fun GreetingScreen(
     LaunchedEffect(Unit) {
         prepBellEnabled = settingsStore.getPrepBell()
         while (true) {
-            nowSecondOfDay = currentSecondOfDay()
+            // 只有「当前课程 / 表盘」两页需要秒级刷新；待办、更多页冻结，
+            // 滑动到后两页时也不会因为每秒重组而拖慢滑动。
+            if (pagerState.currentPage <= DIAL_PAGE) {
+                nowSecondOfDay = currentSecondOfDay()
+            }
             delay(1000L.milliseconds)
         }
     }
@@ -134,11 +149,19 @@ fun GreetingScreen(
         }
     }
 
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    // 表盘页用超大时间当主视觉，顶部状态栏时间在这一页隐藏，避免重复。
+    // 用 settledPage 而不是 currentPage：滑动中途不切换，减少一次重组。
+    LaunchedEffect(pagerState.settledPage) {
+        onStatusTimeVisibleChange(pagerState.settledPage != DIAL_PAGE)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { onStatusTimeVisibleChange(true) }
+    }
 
     HorizontalPagerScaffold(pagerState = pagerState) {
         HorizontalPager(state = pagerState) { page ->
-            KeepScreenOn(enabled = keepScreenOnSetting && isActive && page == 0)
+            KeepScreenOn(enabled = keepScreenOnSetting && isActive && page <= DIAL_PAGE)
             when (page) {
                 0 -> CurrentEventPage(
                     activeDisplayEvent = activeDisplayEvent,
@@ -154,7 +177,24 @@ fun GreetingScreen(
                     upcomingEvents = upcomingEvents,
                     summaryLabel = summaryLabel
                 )
-                1 -> MenuPage(onChangePage = onChangePage)
+
+                DIAL_PAGE -> DialScreen(
+                    events = schedule,
+                    adjustments = adjustments,
+                    todayDate = todayDate,
+                    nowSecondOfDay = nowSecondOfDay,
+                    weekday = displayWeekday,
+                    prepBellEnabled = prepBellEnabled,
+                    squareCornerRadiusDp = dialCornerRadius
+                )
+
+                TODO_PAGE -> TodoHomePage(
+                    onOpenDetail = { id -> onChangePage(TodoDetailNavScreen(id)) },
+                    onOpenAll = { onChangePage(TodoNavScreen) },
+                    onAddTodo = { onChangePage(AddTodoNavScreen) }
+                )
+
+                else -> MenuPage(onChangePage = onChangePage)
             }
         }
     }

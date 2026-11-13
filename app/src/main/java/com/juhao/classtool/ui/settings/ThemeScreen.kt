@@ -34,6 +34,7 @@ fun ThemeScreen(
     val appTheme by store.appThemeFlow.collectAsState(initial = null)
     val dynamicTheme by store.dynamicThemeFlow.collectAsState(initial = true)
     val pureBlackBackground by store.pureBlackBackgroundFlow.collectAsState(initial = false)
+    val dialCornerRadius by store.dialCornerRadiusFlow.collectAsState(initial = 40f)
 
     val themes = remember { AppTheme.entries.filter { it != AppTheme.CUSTOM } }
 
@@ -285,9 +286,31 @@ fun ThemeScreen(
                     transformation = SurfaceTransformation(transformationSpec)
                 )
             }
+
+            item {
+                val steps = DIAL_CORNER_STEPS
+                val currentIndex = steps
+                    .indexOfFirst { it.toFloat() >= dialCornerRadius - 0.5f }
+                    .coerceAtLeast(0)
+
+                SliderSettingCard(
+                    modifier = Modifier.transformedHeight(this, transformationSpec),
+                    title = "表盘圆角（方屏）",
+                    transformation = SurfaceTransformation(transformationSpec),
+                    valueLabel = "${steps[currentIndex]} dp",
+                    currentIndex = currentIndex,
+                    stepCount = steps.size,
+                    onChange = { index ->
+                        val safeIndex = index.coerceIn(0, steps.lastIndex)
+                        scope.launch { store.setDialCornerRadius(steps[safeIndex].toFloat()) }
+                    }
+                )
+            }
         }
     }
 }
+
+private val DIAL_CORNER_STEPS = (0..120 step 8).toList()
 
 private fun themeSubtitle(theme: AppTheme): String = when (theme) {
     AppTheme.MORNING -> "温暖明亮的橙黄色调"
